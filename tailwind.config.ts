@@ -47,6 +47,7 @@ const config: Config = {
         50: "rgb(0 0 0 / 0.5)",
         25: "rgb(0 0 0 / 0.25)",
         brown: "#423827",
+        muted: "#a09b93", // eye icon + checkbox border on the auth screens
       },
 
       heatmap: {
@@ -84,6 +85,8 @@ const config: Config = {
       "body-medium": ["15px", { lineHeight: "22.5px", letterSpacing: "0px", fontWeight: "500" }],
       "body-small": ["13px", { lineHeight: "19.5px", letterSpacing: "0px", fontWeight: "400" }],
       caption: ["11px", { lineHeight: "15.4px", letterSpacing: "0.11px", fontWeight: "500" }],
+      // Desktop/Caption — used on the mobile Login screen for "Remember me" / "Forgot Password"
+      "caption-lg": ["12px", { lineHeight: "16.8px", letterSpacing: "0.12px", fontWeight: "500" }],
       "button-cta": ["14px", { lineHeight: "14px", letterSpacing: "0.14px", fontWeight: "600" }],
       "stat-display": ["36px", { lineHeight: "39.6px", letterSpacing: "0px", fontWeight: "700" }],
       "stat-large": ["24px", { lineHeight: "27.6px", letterSpacing: "0px", fontWeight: "500" }],
@@ -115,9 +118,35 @@ const config: Config = {
 
     extend: {
       // Screens are designed at 393 × 852.
-      width: { frame: "393px" },
+      width: {
+        frame: "393px",
+        content: "329px", // frame minus 32px gutters; header + bottom nav width
+      },
       maxWidth: { frame: "393px" },
       minHeight: { frame: "852px" },
+
+      // Shell measurements from the RG / CCA screens (BNB-21 bottom nav, Frame 366 header)
+      spacing: {
+        "header-top": "70px", // header y on every screen (below the 62px iOS status bar)
+        "nav-item": "25.5px", // padding around each bottom-nav item
+        "nav-underline": "1.5px", // label → underline offset (3px gap minus the 1.5px stroke)
+        "nav-clearance": "120px", // spacer the screens leave below content for the bottom nav
+        "login-top": "166px", // Login card y
+        "signup-top": "176px", // Password Setup / Reset Password card y
+        "forgot-top": "216px", // Forgot Password card y
+        "check-mail": "40px", // Check Mail card padding
+      },
+      borderWidth: {
+        hairline: "0.5px",
+      },
+      height: {
+        nav: "75px",
+      },
+      size: {
+        "icon-button": "40px",
+        icon: "24px",
+        logo: "161px",
+      },
     },
   },
   plugins: [],

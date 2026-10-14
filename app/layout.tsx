@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Poppins } from "next/font/google";
+import AppShell from "@/components/shell/AppShell";
+import { AppProvider } from "@/lib/store";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -33,7 +35,9 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
       >
-        {children}
+        <AppProvider>
+          <AppShell>{children}</AppShell>
+        </AppProvider>
       </body>
     </html>
   );
