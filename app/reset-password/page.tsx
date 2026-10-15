@@ -9,7 +9,8 @@ import { createToken, saveToken } from "@/lib/auth";
 import { signIn, useApp } from "@/lib/store";
 
 // Figma "Reset Password". Reached from the Check Mail card with ?email=…
-// Passwords aren't stored (any password logs in), so a reset just checks they match and signs in.
+// Login accepts any password, so a reset just checks the two match, saves the new one
+// (for Change Password in Settings) and signs in.
 function ResetPassword() {
   const router = useRouter();
   const email = useSearchParams().get("email") ?? "";
@@ -30,7 +31,7 @@ function ResetPassword() {
     }
     const token = createToken({ email: user.email, name: user.name });
     saveToken(token);
-    signIn({ ...user, token });
+    signIn({ ...user, token, password });
     router.replace("/");
   }
 

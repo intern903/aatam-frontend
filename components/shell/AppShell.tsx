@@ -12,7 +12,7 @@ import { getShellConfig } from "./shell-config";
 // The header scrolls with the content; the bottom nav is fixed (as in Figma).
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { header, nav } = getShellConfig(pathname);
+  const { header, nav, fullBleed } = getShellConfig(pathname);
 
   // The internal screen index sits outside the product shell.
   if (pathname === INDEX_PATH) return <AuthGuard>{children}</AuthGuard>;
@@ -20,13 +20,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <div
-        className={`relative mx-auto min-h-screen w-full max-w-frame bg-background ${
-          nav ? "pb-nav-clearance" : ""
+        className={`relative mx-auto min-h-screen w-full max-w-frame overflow-x-clip bg-background ${
+          nav && !fullBleed ? "pb-nav-clearance" : ""
         }`}
       >
         {header && (
           <div className="pt-header-top">
-            <AppHeader back={header.back} search={header.search} />
+            <AppHeader {...header} />
           </div>
         )}
         {children}

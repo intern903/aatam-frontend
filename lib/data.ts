@@ -14,19 +14,21 @@ export type LifeAreaId =
   | "career"
   | "money"
   | "health"
+  | "appearance"
+  | "home"
   | "family"
+  | "friends"
   | "relationship"
-  | "learning"
+  | "fun"
   | "personal-development"
   | "spirituality"
-  | "service"
-  | "fun";
+  | "service";
 
 export type LifeArea = {
   id: LifeAreaId;
   name: string;
   description: string;
-  score: number; // CIF life wheel, 1 = not at all where I want it, 10 = exactly right
+  score: number | null; // CIF life wheel, 1 = not at all where I want it, 10 = exactly right; null = not rated yet
   focus: boolean; // one of the 1–3 areas picked to focus on
 };
 
@@ -40,38 +42,58 @@ export type KeyResult = {
   priority: number;
 };
 
+// The CIF answers, one field per question on the live form (begin.aatam.co).
+// Picks hold the exact option labels (or the option's saved value where the form saves a
+// different one); free text is kept word for word. Wheel scores and focus live on lifeAreas.
 export type CifAnswers = {
-  aboutYou: {
-    name: string;
-    email: string;
-    pronouns: string;
-    bestWayToReach: string;
-    ageRange: string;
-  };
-  goals: {
-    byArea: Partial<Record<LifeAreaId, { picks: string[]; ownWords: string }>>;
-    mainGoals: string;
-    extraSupport: string[]; // up to 3
-  };
-  thisSeason: {
-    whatsHappening: string;
-    inTransition: string;
-  };
-  workingTogether: {
-    coachedBefore: "Yes, formal coaching" | "Yes, informally" | "No, this is my first time";
-    hopesForCoaching: string;
-  };
-  whoYouAre: {
-    describedAs: [string, string, string];
-    hobbies: string;
-    learningStyle: "Visual" | "Kinesthetic" | "Auditory";
-  };
-  sinceWeLastSpoke: string;
+  name: string;
+  email: string;
+  pronoun: string | null;
+  pronounOwn: string;
+  contact: string | null;
+  age: string | null;
+  goals: Partial<Record<LifeAreaId, { picks: string[]; own: string; explore: boolean }>>;
+  objectives: string;
+  objectivesPrefill: string;
+  special: string[];
+  transition: string | null;
+  transDetail: string[];
+  transOwn: string;
+  obstacles: string[];
+  obstaclesOwn: string;
+  obstacleStory: string;
+  motivation: string[];
+  motivationOwn: string;
+  coached: string | null;
+  worked: string[];
+  workedOwn: string;
+  didnt: string[];
+  didntOwn: string;
+  challenge: string | null;
+  hobbies: string[];
+  hobbiesOwn: string;
+  words: [string, string, string];
+  bgTags: string[];
+  bgNone: boolean;
+  bgMore: string;
+  anythingElse: string;
+  reflection: string;
+};
+
+// Where the client is in the form, so they can leave and resume at the exact question.
+export type CifProgress = {
+  current: string; // step id, never shown to the client
+  history: string[];
+  editing: boolean; // came from the summary's Edit link
+  focusChosen: boolean; // false = the three lowest scores are pre-ticked
+  startedAt: string | null;
+  submittedAt: string | null;
 };
 
 export type Story = {
   id: string;
   title: string;
+  text?: string; // the story itself, in the client's words
   keywords: string[];
   doing: string; // "Specifically, what were you doing?"
   value: string; // "What value did you take from this? What was in it for you?"
@@ -159,20 +181,57 @@ export const sampleUser = {
 };
 
 // ---------- Life areas ----------
-// Figma's life wheel counts 12 areas but only names these 10; the other two are still to be decided.
+// The 12 areas of the CIF life wheel, in wheel order, with the live form's hints.
 
 export const lifeAreas: LifeArea[] = [
   { id: "career", name: "Career", description: "Work, vocation, how you spend your working days", score: 7, focus: false },
-  { id: "money", name: "Money", description: "Income, savings, and how you feel about your finances", score: 4, focus: true },
-  { id: "health", name: "Health", description: "Your body, your energy, your sleep, and how you move", score: 4, focus: true },
-  { id: "family", name: "Family", description: "Parents, children, and the people you call home", score: 7, focus: false },
-  { id: "relationship", name: "Relationship", description: "Your partner, and the closeness you share", score: 6, focus: false },
-  { id: "learning", name: "Learning", description: "New skills, reading, and staying curious", score: 8, focus: false },
-  { id: "personal-development", name: "Personal Development", description: "Growing into the person you want to be", score: 6, focus: false },
-  { id: "spirituality", name: "Spirituality", description: "Meaning, faith, and feeling part of something larger", score: 5, focus: false },
-  { id: "service", name: "Service", description: "Giving back to the people and causes you care about", score: 5, focus: false },
-  { id: "fun", name: "Fun", description: "Play, rest, hobbies, and time that is only yours", score: 3, focus: true },
+  { id: "money", name: "Money", description: "Income, savings, how you feel about money", score: 4, focus: true },
+  { id: "health", name: "Health", description: "Energy, sleep, movement, wellbeing", score: 4, focus: true },
+  { id: "appearance", name: "Appearance", description: "How you look and feel in your own skin", score: 6, focus: false },
+  { id: "home", name: "Home", description: "The place you live and how it feels", score: 7, focus: false },
+  { id: "family", name: "Family", description: "Parents, children, the family you're part of", score: 7, focus: false },
+  { id: "friends", name: "Friends", description: "Friendships and social life", score: 5, focus: false },
+  { id: "relationship", name: "Relationship", description: "Partner or romantic life", score: 6, focus: false },
+  { id: "fun", name: "Fun", description: "Play, joy, recreation", score: 3, focus: true },
+  { id: "personal-development", name: "Personal Development", description: "Learning, growth, becoming who you want to be", score: 6, focus: false },
+  { id: "spirituality", name: "Spirituality", description: "Meaning, faith, inner life", score: 5, focus: false },
+  { id: "service", name: "Service", description: "Giving back, community, volunteering", score: 5, focus: false },
 ];
+
+// ---------- Life area images (Settings → Life Area Images) ----------
+// Figma provides images for Career, Health, Family and Personal Development only;
+// the other areas reuse those four in turn (never the same picture as the card beside them)
+// until they get their own.
+
+const figmaAreaImages: Partial<Record<LifeAreaId, string>> = {
+  career: "/images/life-areas/career.png",
+  health: "/images/life-areas/health.png",
+  family: "/images/life-areas/family.png",
+  "personal-development": "/images/life-areas/personal-development.png",
+};
+const reusedImages = Object.values(figmaAreaImages) as string[];
+
+export const lifeAreaImageDefaults = (() => {
+  const result = {} as Record<LifeAreaId, string>;
+  let turn = 0;
+  lifeAreas.forEach((area, i) => {
+    const own = figmaAreaImages[area.id];
+    if (own) {
+      result[area.id] = own;
+      return;
+    }
+    const previous = i > 0 ? result[lifeAreas[i - 1].id] : undefined;
+    const next = lifeAreas[i + 1] && figmaAreaImages[lifeAreas[i + 1].id];
+    let pick = reusedImages[turn % reusedImages.length];
+    for (let tries = 0; (pick === previous || pick === next) && tries < reusedImages.length; tries++) {
+      turn++;
+      pick = reusedImages[turn % reusedImages.length];
+    }
+    result[area.id] = pick;
+    turn++;
+  });
+  return result;
+})();
 
 // ---------- Goals (Key Results) ----------
 
@@ -185,55 +244,71 @@ export const keyResults: KeyResult[] = [
 ];
 
 // ---------- CIF ----------
+// Meera's submitted CIF. Options are the live form's exact labels.
 
 export const cifAnswers: CifAnswers = {
-  aboutYou: {
-    name: "Meera Krishnan",
-    email: "meera.krishnan@example.com",
-    pronouns: "She/Her",
-    bestWayToReach: "WhatsApp",
-    ageRange: "30s",
-  },
+  name: "Meera Krishnan",
+  email: "meera.krishnan@example.com",
+  pronoun: "She/Her",
+  pronounOwn: "",
+  contact: "Text",
+  age: "30s",
   goals: {
-    byArea: {
-      money: {
-        picks: ["Get clear on my financial goals", "Feel calmer about money"],
-        ownWords:
-          "The studio makes decent money, but I pay everyone else first and myself whatever is left. Some months that is nothing. I want a real salary and to stop checking the bank app at midnight.",
-      },
-      health: {
-        picks: ["Move my body most days", "Sleep before midnight"],
-        ownWords:
-          "I used to run before the studio. Now my back hurts by Thursday and I live on filter coffee until lunch. I want my energy back, not a six-pack.",
-      },
-      fun: {
-        picks: ["Have time that is just mine"],
-        ownWords:
-          "I honestly can't remember the last time I painted something that wasn't for a client. I want one thing in my week that has no deadline attached to it.",
-      },
+    fun: {
+      picks: ["Make time for joy", "Rediscover old hobbies"],
+      own: "I honestly can't remember the last time I painted something that wasn't for a client. I want one thing in my week that has no deadline attached to it.",
+      explore: false,
     },
-    mainGoals:
-      "To stop being the bottleneck in my own studio, pay myself properly, and get back the version of me who had energy left over at the end of the day for Tara and Arjun.",
-    extraSupport: ["Balance", "Self-confidence", "Fun"],
+    money: {
+      picks: ["Get clear on my financial goals", "Feel calmer about money"],
+      own: "The studio makes decent money, but I pay everyone else first and myself whatever is left. Some months that is nothing. I want a real salary and to stop checking the bank app at midnight.",
+      explore: false,
+    },
+    health: {
+      picks: ["Have more energy", "Move my body more", "Sleep better"],
+      own: "I used to run before the studio. Now my back hurts by Thursday and I live on filter coffee until lunch. I want my energy back, not a six-pack.",
+      explore: false,
+    },
   },
-  thisSeason: {
-    whatsHappening:
-      "We just signed our biggest client yet and I hired two people in one month. It is exciting and it is a lot. My mother also moved in with us in June.",
-    inTransition:
-      "Yes. I'm moving from being the designer who does everything to someone who leads a team, and I'm not sure I know how to do that yet.",
-  },
-  workingTogether: {
-    coachedBefore: "Yes, informally",
-    hopesForCoaching:
-      "Someone who will ask me the questions I keep avoiding, and notice when I'm saying yes to everything again.",
-  },
-  whoYouAre: {
-    describedAs: ["Warm", "Stubborn", "Curious"],
-    hobbies: "Watercolours, long walks, cooking my grandmother's recipes on Sundays",
-    learningStyle: "Visual",
-  },
-  sinceWeLastSpoke:
+  objectives:
+    "To stop being the bottleneck in my own studio, pay myself properly, and get back the version of me who had energy left over at the end of the day for Tara and Arjun.",
+  objectivesPrefill: "",
+  special: ["Balance", "Self-confidence", "Fun"],
+  transition: "Yes - I know what it is",
+  transDetail: ["Career or work change", "A shift in identity or purpose"],
+  transOwn: "",
+  obstacles: ["Not enough time", "Overthinking", "Self-doubt"],
+  obstaclesOwn: "",
+  obstacleStory:
+    "I say yes to one more client, then I'm working until midnight and skipping my run. By Thursday I'm too tired to think clearly, and I start doubting every decision.",
+  motivation: ["Seeing real progress", "Being accountable to someone"],
+  motivationOwn: "",
+  coached: "Yes - informally",
+  worked: ["A fresh perspective", "Feeling heard"],
+  workedOwn: "",
+  didnt: ["Too much talk, not enough action"],
+  didntOwn: "",
+  challenge: "Gradual challenges",
+  hobbies: ["Arts and crafts", "Cooking", "Outdoors and nature"],
+  hobbiesOwn: "Watercolours",
+  words: ["Warm", "Stubborn", "Curious"],
+  bgTags: ["Family expectations"],
+  bgNone: false,
+  bgMore:
+    "My mother lives with us now. In our family the eldest daughter is expected to hold everything together, and I still feel that pull.",
+  anythingElse:
+    "I'm better at looking after other people than myself. Please notice if I start doing that again.",
+  reflection:
     "After our call I said no to a project I would normally have taken just for the money. It felt strange and good. I want more of that.",
+};
+
+export const cifProgress: CifProgress = {
+  current: "summary",
+  history: [],
+  editing: false,
+  focusChosen: true,
+  startedAt: "2026-06-28T18:20:00.000Z",
+  submittedAt: "2026-06-28T18:34:00.000Z",
 };
 
 // ---------- Life Purpose ----------
@@ -246,6 +321,20 @@ export const clusters: Cluster[] = [
   { name: "Belonging", words: ["Makes people feel welcome", "Sees the good in people", "Empathy", "Loyal"] },
   { name: "Brave", words: ["Takes initiative", "Determined", "Stays calm under pressure", "Honest"] },
 ];
+
+export const purposeDrafts = [
+  {
+    date: "2026-09-02",
+    text: "My purpose in life is to make beautiful things by working hard so that people notice good design.",
+  },
+  {
+    date: "2026-09-16",
+    text: "My purpose in life is to stay curious by building a studio where people feel they belong, to make work that matters.",
+  },
+];
+
+// Where Meera feels her purpose in her body (the "barometer" from the stories session).
+export const purposeBodyFeel = "chest";
 
 export const lifePurposeStatement =
   "My purpose in life is to stay curious and make things with care, by building rooms where people feel they belong and are brave enough to try, so that the work and everyone in it comes out more alive.";

@@ -25,7 +25,9 @@ export default function LoginPage() {
     }
     const token = createToken({ email: user.email, name: user.name });
     saveToken(token);
-    signIn({ ...user, token });
+    // An account without a saved password (the sample client) takes the first one used,
+    // so Change Password has something to check against.
+    signIn({ ...user, token, password: user.password ?? password });
     router.replace("/");
   }
 

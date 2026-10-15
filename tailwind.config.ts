@@ -27,6 +27,12 @@ const config: Config = {
       current: "currentColor",
       white: "#ffffff",
       black: "#000000",
+      alert: "#fa0202", // notification dot on the home header bell
+      danger: "#ff383c", // Figma accents/red — "Wrong credentials", Sign out tile
+      cancel: { DEFAULT: "#d9d9d9", text: "#3d3d3d" }, // Cancel buttons in Settings; CIF progress track
+      ring: "#b0b0b0", // Figma grid/light grey — life-wheel rings
+      line: "#e3ded8", // unticked checklist circles (Life Purpose)
+      olive: "#414a32", // current page dot (Previous Drafts)
 
       primary: ramp(["#e5f1e5", "#cbe2cc", "#b2d4b2", "#98c599", "#7eb77f", "#659266", "#4c6e4c", "#324933"]),
       pink: ramp(["#fae8e6", "#f5d1cc", "#f1bab3", "#eca399", "#e78c80", "#b97066", "#8b544d", "#5c3833"]),
@@ -85,6 +91,8 @@ const config: Config = {
       "body-medium": ["15px", { lineHeight: "22.5px", letterSpacing: "0px", fontWeight: "500" }],
       "body-small": ["13px", { lineHeight: "19.5px", letterSpacing: "0px", fontWeight: "400" }],
       caption: ["11px", { lineHeight: "15.4px", letterSpacing: "0.11px", fontWeight: "500" }],
+      // Settings avatar initials (Display style, enlarged to 64/64 in Figma)
+      "avatar-initials": ["64px", { lineHeight: "64px", letterSpacing: "-0.54px", fontWeight: "600" }],
       // Desktop/Caption — used on the mobile Login screen for "Remember me" / "Forgot Password"
       "caption-lg": ["12px", { lineHeight: "16.8px", letterSpacing: "0.12px", fontWeight: "500" }],
       "button-cta": ["14px", { lineHeight: "14px", letterSpacing: "0.14px", fontWeight: "600" }],
@@ -99,7 +107,7 @@ const config: Config = {
     spacing: {
       0: "0px",
       px: "1px",
-      ...px([2, 4, 6, 8, 10, 12, 16, 20, 24, 32]),
+      ...px([2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40]), // 40 recurs across the Settings screens
     },
 
     borderRadius: {
@@ -114,6 +122,8 @@ const config: Config = {
       "card-sm": "0 0 4px 0 rgb(0 0 0 / 0.25)",
       "input-inset": "inset 0 0 4px 0 rgb(0 0 0 / 0.25)",
       image: "0 0 12px 0 rgb(0 0 0 / 0.5)",
+      // Not in Figma: the live CIF form's floating booking button
+      fab: "0 6px 20px rgb(74 49 34 / 0.28)",
     },
 
     extend: {
@@ -121,6 +131,11 @@ const config: Config = {
       width: {
         frame: "393px",
         content: "329px", // frame minus 32px gutters; header + bottom nav width
+        toggle: "40px",
+        wordmark: "150px", // CIF header wordmark
+        "story-card": "250px", // Life Purpose story card
+        "cluster-canvas": "560px", // the word board scrolls sideways inside its 329px panel
+        "logo-large": "215px", // CIF welcome logo
       },
       maxWidth: { frame: "393px" },
       minHeight: { frame: "852px" },
@@ -135,17 +150,48 @@ const config: Config = {
         "signup-top": "176px", // Password Setup / Reset Password card y
         "forgot-top": "216px", // Forgot Password card y
         "check-mail": "40px", // Check Mail card padding
+        "cif-top": "102px", // CIF wordmark y
+        "cif-logo-top": "191px", // CIF welcome logo y
       },
       borderWidth: {
         hairline: "0.5px",
       },
       height: {
         nav: "75px",
+        frame: "852px",
+        "area-card": "150px", // life-area image cards
+        toggle: "20px",
+        wordmark: "65px",
+        "story-card": "350px",
+        "cluster-board": "521px", // Life Purpose clustering panel
+        "power-card": "200px", // power words photo card on the writing screen
+        "draft-card": "295px", // draft statement card
+        "purpose-card": "330px", // final statement card
+        "booking-panel": "401px", // "Book a call with Dinesh" panel
+        "logo-large": "200px",
+      },
+      // Figma prototype transition on every home link: SLIDE_IN from the right, 0.3s, ease in and out
+      keyframes: {
+        "slide-in": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+      },
+      animation: {
+        "slide-in": "slide-in 300ms ease-in-out",
       },
       size: {
         "icon-button": "40px",
         icon: "24px",
         logo: "161px",
+        avatar: "50px", // home header buttons
+        "avatar-lg": "120px", // Settings avatar
+        "toggle-knob": "18px",
+        wheel: "230px", // CIF life wheel
+        check: "20px", // CIF checkbox
+        node: "68px", // Life Purpose map nodes (dashed ring)
+        "node-inner": "60px",
+        "icon-lg": "32px",
       },
     },
   },

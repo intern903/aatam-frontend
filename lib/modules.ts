@@ -1,0 +1,147 @@
+// Home-page modules: progress is worked out from the store as
+// "how many of the module's required pieces are filled in".
+// Each module also says where its final screen is and where to resume.
+// Routes are placeholders until each module's screens are built.
+
+import { flow, isAnswered } from "./cif";
+import type { CifProgress } from "./data";
+import type { AppState } from "./store";
+
+// Optional questions count as answered, so a form nobody has opened must not look started.
+const started = (p: CifProgress) => p.startedAt !== null || p.history.length > 0;
+
+export type ModuleId =
+  | "lifePurpose"
+  | "vision"
+  | "values"
+  | "qualities"
+  | "guidelines"
+  | "journey"
+  | "myself";
+
+export type ModuleStatus = "not-started" | "in-progress" | "finished";
+
+export type ModuleProgress = {
+  status: ModuleStatus;
+  percent: number; // 0–100
+  href: string | null; // null = not started and waiting for the coach to open it
+};
+
+type Piece = { done: boolean; resume: string };
+// startHref: where a not-started module opens. Without one, home shows the coach pop-up.
+type Definition = { finalHref: string; startHref?: string; pieces: (s: AppState) => Piece[] };
+
+const filled = (text: string | undefined | null) => !!text && text.trim().length > 0;
+
+const definitions: Record<ModuleId, Definition> = {
+  // CIF: every question on the client's path through the form, then the submission.
+  // The form itself resumes at the exact question, so in-progress always opens /cif.
+  myself: {
+    finalHref: "/cif?step=summary",
+    pieces: ({ cif }) => {
+      const s = { answers: cif.answers, lifeAreas: cif.lifeAreas, progress: cif.progress };
+      const questions = flow(s).filter((step) => !/^(welcome|ch\d|break:\d|summary)$/.test(step));
+      return [
+        ...questions.map((step) => ({ done: started(cif.progress) && isAnswered(step, s), resume: "/cif" })),
+        { done: cif.progress.submittedAt !== null, resume: "/cif" },
+      ];
+    },
+  },
+
+  // Life Purpose: stories (2–3 to start) → clusters → power words → statement → feels true.
+  lifePurpose: {
+    finalHref: "/life-purpose/final",
+    startHref: "/life-purpose", // the client starts Life Purpose on their own
+    pieces: ({ lifePurpose: lp }) => [
+      { done: lp.stories.length >= 1, resume: "/life-purpose/stories" },
+      { done: lp.stories.length >= 2, resume: "/life-purpose/stories" },
+      { done: lp.stories.length >= 3, resume: "/life-purpose/stories" },
+      { done: lp.clusters.length > 0, resume: "/life-purpose/clustering" },
+      { done: lp.powerWords.length > 0, resume: "/life-purpose/naming" },
+      { done: filled(lp.statement), resume: "/life-purpose/write" },
+      { done: lp.status === "final", resume: "/life-purpose" },
+    ],
+  },
+
+  // Vision: for each life area started, the four questions plus the "I ..." statement.
+  vision: {
+    finalHref: "/visions",
+    pieces: ({ visions }) =>
+      Object.values(visions.byLifeArea).flatMap((v) =>
+        v
+          ? [v.answers.livedOnPurpose, v.answers.doOrBe, v.answers.energizingValues, v.answers.lifetime, v.statement].map(
+              (text) => ({ done: filled(text), resume: `/visions/${v.lifeArea}` }),
+            )
+          : [],
+      ),
+  },
+
+  // Values & Qualities: quiz results selected, then the final choice.
+  values: {
+    finalHref: "/values",
+    pieces: ({ values }) => [
+      { done: values.selected.length > 0, resume: "/values/quiz" },
+      { done: values.final.length > 0, resume: "/values/choose" },
+    ],
+  },
+  qualities: {
+    finalHref: "/qualities",
+    pieces: ({ qualities }) => [
+      { done: qualities.selected.length > 0, resume: "/values/quiz" },
+      { done: qualities.final.length > 0, resume: "/qualities/choose" },
+    ],
+  },
+
+  // Guidelines: every active life code needs its statement and three answers.
+  guidelines: {
+    finalHref: "/my-life-code",
+    pieces: ({ lifeCodes }) =>
+      lifeCodes
+        .filter((c) => c.status === "active")
+        .flatMap((c) =>
+          [c.statement, c.answers.seeOrHear, c.answers.whenUse, c.answers.makeReal].map((text) => ({
+            done: filled(text),
+            resume: `/my-life-code/${c.id}`,
+          })),
+        ),
+  },
+
+  // Journey (current Results Game period): outcomes set and prioritised,
+  // each Doing outcome done, each Being outcome scored, each well-being quality scored.
+  journey: {
+    finalHref: "/my-outcomes",
+    pieces: ({ outcomes, qualities, wellbeing }) => {
+      const current = outcomes.currentPeriod;
+      if (current.length === 0) return [];
+      const finalQualities = qualities.selected.filter((q) => qualities.final.includes(q.id));
+      return [
+        { done: true, resume: "/journey" },
+        { done: current.some((o) => o.priority !== null), resume: "/journey/prioritize" },
+        ...current.map((o) => ({
+          done: o.type === "Doing" ? o.done : o.score !== null,
+          resume: "/journey",
+        })),
+        ...finalQualities.map((q) => ({
+          done: typeof wellbeing.scores[q.name] === "number",
+          resume: "/my-well-being",
+        })),
+      ];
+    },
+  },
+};
+
+export function getModuleProgress(state: AppState, id: ModuleId): ModuleProgress {
+  const { finalHref, startHref, pieces } = definitions[id];
+  const list = pieces(state);
+  const done = list.filter((p) => p.done).length;
+
+  if (done === 0) return { status: "not-started", percent: 0, href: startHref ?? null };
+  if (done === list.length) return { status: "finished", percent: 100, href: finalHref };
+
+  const nextStep = list.find((p) => !p.done)!;
+  return {
+    status: "in-progress",
+    percent: Math.round((done / list.length) * 100),
+    href: nextStep.resume,
+  };
+}

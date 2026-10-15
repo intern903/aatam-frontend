@@ -25,7 +25,7 @@ export default function SignupPage() {
     const user = { name: name.trim(), email: email.trim() };
     const token = createToken(user);
     saveToken(token);
-    signIn({ ...user, token });
+    signIn({ ...user, token, password });
     router.replace("/");
   }
 
