@@ -64,7 +64,7 @@ export function sparksFor(words: string[]) {
   words.forEach((phrase) =>
     phrase
       .split(/[\s-]+/)
-      .map((w) => w.replace(/[^\p{L}']/gu, ""))
+      .map((w) => w.replace(/[^A-Za-zÀ-ɏ']/g, ""))
       .filter((w) => w.length > 3 && !SMALL_WORDS.has(w.toLowerCase()))
       .forEach(add),
   );
@@ -144,4 +144,27 @@ export const TAG_COLOURS = ["bg-primary-500", "bg-pink-500", "bg-blue-500"];
 export function checkState(text: string, overrides: Partial<Record<CheckId, boolean>>) {
   const auto = autoChecks(text);
   return (id: CheckId) => overrides[id] ?? auto[id];
+}
+
+/**
+ * Splits text so each power word (cluster name) found in it is its own piece, tagged with the
+ * cluster it came from. Matches the same loose way as usesWord ("Curious" also finds "curiosity").
+ */
+export function powerWordPieces(text: string, names: string[]): { text: string; cluster: number }[] {
+  const stems = names
+    .map((n, i) => ({ i, stem: n.trim().toLowerCase().slice(0, Math.max(4, n.trim().length - 2)) }))
+    .filter((s) => s.stem.length > 0);
+  if (!stems.length) return [{ text, cluster: -1 }];
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(${stems.map((s) => `${escape(s.stem)}[A-Za-z\u00C0-\u024F'-]*`).join("|")})`, "gi");
+  return text
+    .split(re)
+    .filter((t) => t !== "")
+    .map((t) => ({ text: t, cluster: stems.find((s) => t.toLowerCase().startsWith(s.stem))?.i ?? -1 }));
+}
+
+/** The stories a cluster's phrases came from. */
+export function storiesForCluster(stories: Story[], words: string[]) {
+  const keys = new Set(words.map((w) => w.trim().toLowerCase()));
+  return stories.filter((s) => s.keywords.some((k) => keys.has(k.trim().toLowerCase())));
 }

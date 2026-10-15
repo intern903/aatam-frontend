@@ -17,7 +17,7 @@ import BottomNav from "@/components/shell/BottomNav";
 import {
   CHECKLIST,
   MAKE_IT_REAL,
-  autoChecks,
+  checkState,
   clusterColour,
   wordsFromStories,
   type CheckId,
@@ -34,7 +34,7 @@ function nextStep(lp: AppState["lifePurpose"]) {
   return "/life-purpose/write";
 }
 
-type Popup = "faq" | "edit" | "history" | "sure";
+type Popup = "faq" | "edit" | "history" | "sure" | "congrats";
 
 export default function LifePurposePage() {
   return (
@@ -48,7 +48,7 @@ export default function LifePurposePage() {
 function LifePurpose() {
   const router = useRouter();
   const popupParam = useSearchParams().get("popup");
-  const popup = (["faq", "edit", "history", "sure"] as const).find((p) => p === popupParam) ?? null;
+  const popup = (["faq", "edit", "history", "sure", "congrats"] as const).find((p) => p === popupParam) ?? null;
   const { lifePurpose: lp } = useApp();
 
   useEffect(() => {
@@ -146,6 +146,23 @@ function DraftView({ initialPopup }: { initialPopup: Popup | null }) {
 
       <BottomNav active="foundation" />
 
+      {popup === "congrats" && (
+        // Life Purpose flow, step 22: finalising is a congratulation, never a warning, and says it
+        // can still be edited later. Not in Figma; built from the same pop-up.
+        <PopUpSheet title="Congratulations" radius="md" closable={false} onClose={() => setPopup(null)}>
+          <p className="text-body text-black">
+            You have put words to what you were already living. You can come back and edit it any time.
+          </p>
+          <PrimaryButton
+            onClick={() => {
+              setPurposeStatus("final");
+              router.push("/life-purpose/final");
+            }}
+          >
+            See my life purpose
+          </PrimaryButton>
+        </PopUpSheet>
+      )}
       {popup === "faq" && <FaqPopup onClose={() => setPopup(null)} />}
       {popup === "edit" && <EditDraft onClose={() => setPopup(null)} />}
       {popup === "history" && <PreviousDrafts onClose={() => setPopup(null)} />}
@@ -154,14 +171,7 @@ function DraftView({ initialPopup }: { initialPopup: Popup | null }) {
         <PopUpSheet title="Does this feel true?" radius="md" closable={false} onClose={() => setPopup(null)}>
           <p className="text-body text-black">It is a visceral experience. You will know it when you get it.</p>
           <div className="flex flex-col gap-6">
-            <PrimaryButton
-              onClick={() => {
-                setPurposeStatus("final");
-                router.push("/life-purpose/final");
-              }}
-            >
-              Yes, it feels true
-            </PrimaryButton>
+            <PrimaryButton onClick={() => setPopup("congrats")}>Yes, it feels true</PrimaryButton>
             <button type="button" onClick={() => setPopup(null)} className="w-full rounded-8 bg-cancel py-16 text-button-cta text-black">
               Not yet, I’ll come back
             </button>
@@ -176,10 +186,8 @@ function DraftView({ initialPopup }: { initialPopup: Popup | null }) {
 function EditDraft({ onClose }: { onClose: () => void }) {
   const { lifePurpose: lp } = useApp();
   const [text, setText] = useState(lp.statement);
-  const [ticked, setTicked] = useState<CheckId[]>([]);
-  const auto = autoChecks(text);
-  const on = (id: CheckId, isAuto: boolean) => (isAuto ? auto[id] : ticked.includes(id));
-  const allPass = CHECKLIST.every((c) => on(c.id, c.auto));
+  const [overrides, setOverrides] = useState<Partial<Record<CheckId, boolean>>>({});
+  const on = checkState(text, overrides);
 
   return (
     <PopUpSheet title="My Life Purpose" radius="md" onClose={onClose}>
@@ -192,16 +200,11 @@ function EditDraft({ onClose }: { onClose: () => void }) {
       />
       <div className="flex flex-col gap-8">
         {CHECKLIST.map((c) => (
-          <CheckRow
-            key={c.id}
-            label={c.label}
-            on={on(c.id, c.auto)}
-            onClick={c.auto ? undefined : () => setTicked((t) => (t.includes(c.id) ? t.filter((x) => x !== c.id) : [...t, c.id]))}
-          />
+          <CheckRow key={c.id} label={c.label} on={on(c.id)} onClick={() => setOverrides((o) => ({ ...o, [c.id]: !on(c.id) }))} />
         ))}
       </div>
       <PrimaryButton
-        disabled={!text.trim() || !allPass}
+        disabled={!text.trim()}
         onClick={() => {
           saveDraft(text.trim());
           onClose();

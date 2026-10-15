@@ -176,9 +176,15 @@ const config: Config = {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
+        // Power words: the clusters gather into the words (Life Purpose flow, step 13)
+        rise: {
+          from: { opacity: "0", transform: "translateY(12px) scale(0.96)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
       },
       animation: {
         "slide-in": "slide-in 300ms ease-in-out",
+        rise: "rise 500ms ease-out",
       },
       size: {
         "icon-button": "40px",

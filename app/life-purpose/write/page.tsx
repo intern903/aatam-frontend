@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CheckRow, LpHeader, PrimaryButton } from "@/components/life-purpose/ui";
-import { CHECKLIST, autoChecks, clusterColour, usesWord, type CheckId } from "@/lib/lifePurpose";
+import { CHECKLIST, checkState, clusterColour, usesWord, type CheckId } from "@/lib/lifePurpose";
 import { saveDraft, useApp } from "@/lib/store";
 
 // Figma "LP - First Draft".
@@ -14,10 +14,9 @@ export default function WritePage() {
   const router = useRouter();
   const { lifePurpose: lp } = useApp();
   const [text, setText] = useState(lp.statement);
-  const [ticked, setTicked] = useState<CheckId[]>([]);
-  const auto = autoChecks(text);
-  const on = (id: CheckId, isAuto: boolean) => (isAuto ? auto[id] : ticked.includes(id));
-  const allPass = text.trim() !== "" && CHECKLIST.every((c) => on(c.id, c.auto));
+  // Auto-ticks are a help only; the client can tick or untick any item, and nothing is gated on it.
+  const [overrides, setOverrides] = useState<Partial<Record<CheckId, boolean>>>({});
+  const on = checkState(text, overrides);
 
   return (
     <main className="px-32 pb-40">
@@ -32,7 +31,7 @@ export default function WritePage() {
           {lp.powerWords.map((w, i) => (
             <span
               key={w}
-              className={`rounded-16 px-12 py-4 font-heading text-h4 text-white ${clusterColour(i).solid} ${usesWord(text, w) ? "" : "opacity-50"}`}
+              className={`rounded-16 px-12 py-4 font-heading text-h4 text-white ${clusterColour(i).solid} ${usesWord(text, w) ? "opacity-50" : ""}`}
             >
               {w}
             </span>
@@ -62,18 +61,13 @@ export default function WritePage() {
 
       <div className="mt-12 flex flex-col gap-8">
         {CHECKLIST.map((c) => (
-          <CheckRow
-            key={c.id}
-            label={c.label}
-            on={on(c.id, c.auto)}
-            onClick={c.auto ? undefined : () => setTicked((t) => (t.includes(c.id) ? t.filter((x) => x !== c.id) : [...t, c.id]))}
-          />
+          <CheckRow key={c.id} label={c.label} on={on(c.id)} onClick={() => setOverrides((o) => ({ ...o, [c.id]: !on(c.id) }))} />
         ))}
       </div>
 
       <div className="mt-24">
         <PrimaryButton
-          disabled={!allPass}
+          disabled={!text.trim()}
           onClick={() => {
             saveDraft(text.trim());
             router.push("/life-purpose");

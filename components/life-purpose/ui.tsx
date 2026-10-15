@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import PopUpSheet from "@/components/PopUpSheet";
 import { lifePurposeFaqs } from "@/lib/faq";
-import { statementParts } from "@/lib/lifePurpose";
+import { clusterColour, powerWordPieces, statementParts } from "@/lib/lifePurpose";
 
 // Building blocks for the Life Purpose screens (Figma "LP - …" frames).
 
@@ -73,13 +73,40 @@ export function WordPill({
 }
 
 /** The statement as on the Draft / Final cards: the fixed frame words quieter, the client's words bold. */
-export function StatementText({ statement }: { statement: string }) {
+/**
+ * The statement, the client's own words emphasised. With `powerWords` (cluster names, in cluster
+ * order) and `onWord`, each power word in it is filled with its cluster's colour and can be tapped.
+ */
+export function StatementText({
+  statement,
+  powerWords,
+  onWord,
+}: {
+  statement: string;
+  powerWords?: string[];
+  onWord?: (cluster: number) => void;
+}) {
   return (
     <p className="text-white">
       {statementParts(statement).map((part, i) => (
         <span key={i} className={part.mine ? "font-semibold text-body" : "text-body-medium text-white/50"}>
           {i > 0 ? " " : ""}
-          {part.text}
+          {powerWords && onWord
+            ? powerWordPieces(part.text, powerWords).map((p, j) =>
+                p.cluster === -1 ? (
+                  p.text
+                ) : (
+                  <button
+                    key={j}
+                    type="button"
+                    onClick={() => onWord(p.cluster)}
+                    className={`rounded-4 px-2 text-white ${clusterColour(p.cluster).solid}`}
+                  >
+                    {p.text}
+                  </button>
+                ),
+              )
+            : part.text}
         </span>
       ))}
     </p>
@@ -87,10 +114,10 @@ export function StatementText({ statement }: { statement: string }) {
 }
 
 /** Glass panel the statement sits in (white/10 on the photo). */
-export function StatementGlass({ statement }: { statement: string }) {
+export function StatementGlass(props: Parameters<typeof StatementText>[0]) {
   return (
     <div className="rounded-12 bg-white/10 p-16 backdrop-blur-[2px]">
-      <StatementText statement={statement} />
+      <StatementText {...props} />
     </div>
   );
 }

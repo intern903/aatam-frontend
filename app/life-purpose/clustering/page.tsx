@@ -11,8 +11,10 @@ import { setClusters, useApp } from "@/lib/store";
 
 // Figma "LP - Select Cluster 1/2" (portrait) and "LP - Select Cluster Landscape" (phone on its side).
 // The client's words lie scattered on a board that scrolls sideways; tapping a word puts it in
-// the current cluster (it fills with the cluster's colour and grows). Every word must be in a
-// cluster before "Wrap Up". The client groups the words; the app never groups them itself.
+// the current cluster (it fills with the cluster's colour, grows, and a thread joins it to the
+// cluster's other words). Words already in another cluster leave the pool. Two buttons, per the
+// Life Purpose flow: "Next" finishes this cluster and starts another; "Wrap up" stays muted until
+// every word is in a cluster. The client groups the words; the app never groups them itself.
 // Landscape shows on a phone held sideways, or with ?landscape=1 for testing on desktop.
 // ?cluster=N opens on cluster N.
 
@@ -120,14 +122,14 @@ function Clustering() {
             {spots.map((s) => {
               const owner = clusterOf(s.word);
               const mine = owner === current;
+              if (owner !== -1 && !mine) return null; // already used: out of the pool
               return (
                 <div key={s.word} className="absolute" style={{ left: s.x, top: s.y }}>
                   <WordPill
                     word={s.word}
                     tilt={s.tilt}
                     large={mine}
-                    fill={owner === -1 ? undefined : clusterColour(owner).solid}
-                    dim={owner !== -1 && !mine}
+                    fill={mine ? colour.solid : undefined}
                     onClick={() => toggle(s.word)}
                   />
                 </div>
@@ -162,22 +164,41 @@ function Clustering() {
     ) : null,
   );
 
-  const action = (wrapClass: string) =>
-    allClustered ? (
-      <button type="button" onClick={() => router.push("/life-purpose/naming")} className={`rounded-8 px-16 py-8 text-button-cta text-white ${wrapClass}`}>
-        Wrap Up
-      </button>
-    ) : (
+  // "Next" is the highlighted button until every word is clustered; then "Wrap up" takes over.
+  const actions = (vertical: boolean) => (
+    <div className={`flex gap-8 ${vertical ? "flex-col items-stretch" : "items-center"}`}>
       <button
         type="button"
-        aria-label="Start the next cluster"
-        disabled={currentWords.length === 0}
+        disabled={currentWords.length === 0 || allClustered}
         onClick={() => setCurrent(working.length)}
-        className="rounded-24 bg-primary-600 p-8 disabled:opacity-50"
+        className={`rounded-8 px-16 py-8 text-button-cta ${
+          allClustered ? "bg-cancel text-cancel-text" : "bg-primary-600 text-white"
+        } disabled:opacity-50`}
       >
-        <Image src="/icons/arrow-right-white.svg" alt="" width={24} height={24} />
+        Next
       </button>
+      <button
+        type="button"
+        disabled={!allClustered}
+        onClick={() => router.push("/life-purpose/naming")}
+        className={`rounded-8 px-16 py-8 text-button-cta ${allClustered ? "bg-olive text-white" : "bg-cancel text-cancel-text"}`}
+      >
+        Wrap up
+      </button>
+    </div>
+  );
+
+  if (!words.length) {
+    return (
+      <main className="px-32 pb-24">
+        <LpHeader backHref="/life-purpose" />
+        <p className="mt-24 text-body text-black">Your key words come from your life stories.</p>
+        <Link href="/life-purpose/stories" className="mt-16 inline-block rounded-8 bg-primary-600 px-16 py-12 text-button-cta text-white">
+          Add my life stories
+        </Link>
+      </main>
     );
+  }
 
   if (landscape) {
     // Figma "LP - Select Cluster Landscape": header across the top, board on the left,
@@ -185,7 +206,7 @@ function Clustering() {
     return (
       <main className="fixed inset-0 z-30 flex flex-col gap-12 bg-background px-32 py-24">
         <div className="flex items-center gap-16">
-          <Link href="/life-purpose/stories" aria-label="Back" className="flex size-icon-button shrink-0 items-center justify-center rounded-pill bg-white">
+          <Link href="/life-purpose" aria-label="Back" className="flex size-icon-button shrink-0 items-center justify-center rounded-pill bg-white">
             <Image src="/icons/arrow-left.svg" alt="" width={24} height={24} />
           </Link>
           {pill}
@@ -193,9 +214,9 @@ function Clustering() {
         </div>
         <div className="flex min-h-0 flex-1 gap-16">
           <div className="min-w-0 flex-1">{board}</div>
-          <div className="flex w-[72px] flex-col items-end justify-between">
+          <div className="flex w-[96px] flex-col items-end justify-between">
             <div className="flex flex-col gap-8 overflow-y-auto">{circles}</div>
-            {action("bg-olive")}
+            {actions(true)}
           </div>
         </div>
       </main>
@@ -204,7 +225,7 @@ function Clustering() {
 
   return (
     <main className="px-32 pb-24">
-      <LpHeader backHref="/life-purpose/stories" />
+      <LpHeader backHref="/life-purpose" />
       <div className="mt-16">{pill}</div>
       <p className="mt-8 text-body-small text-black">
         Tap the words that feel like they belong together. All keywords/phrases must be clustered.
@@ -212,7 +233,7 @@ function Clustering() {
       <div className="mt-16 h-cluster-board w-content">{board}</div>
       <div className="mt-20 flex items-center justify-between">
         <div className="flex gap-8 overflow-x-auto">{circles}</div>
-        {action("bg-primary-600")}
+        {actions(false)}
       </div>
     </main>
   );

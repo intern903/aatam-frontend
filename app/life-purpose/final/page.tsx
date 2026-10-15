@@ -2,18 +2,23 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import PopUpSheet from "@/components/PopUpSheet";
 import { LpHeader, MapNode, StatementGlass } from "@/components/life-purpose/ui";
 import { useSwipe } from "@/components/life-purpose/useSwipe";
 import BottomNav from "@/components/shell/BottomNav";
+import { clusterColour, storiesForCluster } from "@/lib/lifePurpose";
 import { useApp } from "@/lib/store";
 
 // Figma "LP - Final State" — the screen the nav's "My Foundation" opens.
 // No scrolling: swipe right (or →) for the stories gallery, swipe left (or ←) for Visions.
 // Positions are the Figma frame's; anything past the screen's height is cut off, as in the frame.
+// Life Purpose flow, step 23: each power word in the statement wears its cluster's colour; tapping
+// it opens the phrases in that cluster and the stories they came from.
 export default function FinalPage() {
   const router = useRouter();
   const { lifePurpose: lp } = useApp();
+  const [open, setOpen] = useState<number | null>(null);
 
   useEffect(() => {
     if (lp.status !== "final") router.replace("/life-purpose");
@@ -55,7 +60,7 @@ export default function FinalPage() {
         </div>
         {/* Figma places this at y 173; anchored to the bottom so longer statements still fit. */}
         <div className="absolute inset-x-16 bottom-16">
-          <StatementGlass statement={lp.statement} />
+          <StatementGlass statement={lp.statement} powerWords={lp.clusters.map((c) => c.name)} onWord={setOpen} />
         </div>
       </div>
       {/* Not on the Figma frame (it appeared on an earlier version): the swipe hint. */}
@@ -73,6 +78,26 @@ export default function FinalPage() {
       </div>
 
       <BottomNav active="foundation" />
+
+      {open !== null && lp.clusters[open] && (
+        <PopUpSheet title={lp.clusters[open].name} radius="md" onClose={() => setOpen(null)}>
+          <div className="flex flex-wrap gap-8">
+            {lp.clusters[open].words.map((w) => (
+              <span key={w} className={`rounded-pill px-12 py-4 text-body-small text-white ${clusterColour(open).solid}`}>
+                {w}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-col gap-8">
+            <p className="text-body-medium text-black">From your stories</p>
+            {storiesForCluster(lp.stories, lp.clusters[open].words).map((st) => (
+              <p key={st.id} className="text-body-small text-black">
+                {st.title}
+              </p>
+            ))}
+          </div>
+        </PopUpSheet>
+      )}
     </main>
   );
 }

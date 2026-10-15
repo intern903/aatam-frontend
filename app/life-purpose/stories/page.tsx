@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Actions, ErrorText, FieldLabel, QuestionHead, TextArea, TextInput } from "@/components/cif/ui";
 import { LpHeader, PrimaryButton } from "@/components/life-purpose/ui";
 import { MIN_STORIES, STORY_QUESTIONS, TAG_COLOURS, storyImage } from "@/lib/lifePurpose";
-import { addStory, useApp } from "@/lib/store";
+import { addStory, setBodyFeel, useApp } from "@/lib/store";
 
 // Life stories. No Figma frame for this step: the list uses the Figma story card front
 // (photo, title, keyword tags) and adding a story uses the CIF question screens' parts.
@@ -59,6 +59,18 @@ export default function StoriesPage() {
           + Add a story
         </button>
       </div>
+
+      {enough && (
+        // Life Purpose flow, step 8: one word, shown only on the final screen.
+        <label className="mt-24 flex flex-col gap-8">
+          <span className="text-body-small text-black">Where in your body do you feel this most?</span>
+          <TextInput
+            placeholder="One word"
+            value={lp.bodyFeel}
+            onChange={(e) => setBodyFeel(e.target.value.replace(/\s+/g, ""))}
+          />
+        </label>
+      )}
 
       <div className="mt-auto pt-40">
         <PrimaryButton disabled={!enough} onClick={() => router.push("/life-purpose/clustering")}>

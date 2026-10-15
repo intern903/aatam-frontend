@@ -19,7 +19,11 @@ export default function PowerWordsPage() {
       </p>
       <div className="mt-20 flex flex-col gap-24">
         {named.map((c, i) => (
-          <section key={c.name + i} className="flex flex-col items-start gap-8">
+          <section
+            key={c.name + i}
+            className="flex flex-col items-start gap-8 motion-safe:animate-rise"
+            style={{ animationDelay: `${i * 150}ms`, animationFillMode: "both" }}
+          >
             <span className={`rounded-16 px-16 py-8 font-heading text-h2 text-white ${clusterColour(i).solid}`}>{c.name}</span>
             <p className="flex flex-wrap items-center gap-4 text-caption text-ink-60">
               {c.words.map((w, j) => (

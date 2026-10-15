@@ -74,7 +74,7 @@ function Naming() {
 
       <p className="mt-24 text-body text-black">Need a spark?</p>
       <div className="mt-8 flex flex-wrap gap-8">
-        {sparksFor(index).map((w) => (
+        {sparksFor(cluster.words).map((w) => (
           <button key={w} type="button" onClick={() => setName(w)} className="rounded-pill bg-white px-16 py-4 text-body text-ink-75">
             {w}
           </button>
