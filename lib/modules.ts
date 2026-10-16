@@ -113,15 +113,15 @@ const definitions: Record<ModuleId, Definition> = {
   },
 
   // My Journey (the Engine): a period running, and each of its outcomes reviewed at the close.
-  // Every step opens the current period, which leads on to whatever comes next.
+  // Every step opens Today, the tab the client lands on.
   journey: {
-    finalHref: "/outcomes/period",
-    startHref: "/outcomes/period",
+    finalHref: "/outcomes/today",
+    startHref: "/outcomes/today",
     pieces: ({ outcomes }) =>
       outcomes.period
         ? [
-            { done: true, resume: "/outcomes/period" },
-            ...outcomes.currentPeriod.map((o) => ({ done: o.closed, resume: "/outcomes/period" })),
+            { done: true, resume: "/outcomes/today" },
+            ...outcomes.currentPeriod.map((o) => ({ done: o.closed, resume: "/outcomes/today" })),
           ]
         : [],
   },

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import PopUpSheet from "@/components/PopUpSheet";
 import OutcomeCard, { CornerButton } from "@/components/engine/OutcomeCard";
-import { DotTags, EngineFrame, EngineTop, Ring, SectionHead } from "@/components/engine/ui";
+import { DotTags, EngineFrame, Ring, SectionHead } from "@/components/engine/ui";
 import { PrimaryButton } from "@/components/life-purpose/ui";
 import { useHydrated } from "@/components/values/ui";
 import type { Outcome, OutcomeNote } from "@/lib/data";
@@ -32,7 +32,17 @@ export default function PeriodPage() {
     .sort((a, b) => b.at.localeCompare(a.at));
 
   return (
-    <EngineFrame top={<EngineTop backHref="/" />}>
+    <EngineFrame
+      top={
+        // Figma "RG - Game": the "‹ Today" pill back to the Today tab.
+        <div className="flex pt-[82px]">
+          <Link href="/outcomes/today" className="flex items-center gap-4 rounded-24 bg-white px-16 py-8 text-body-medium text-black">
+            <Image src="/icons/chevron-right-20.svg" alt="" width={20} height={20} className="rotate-180" />
+            Today
+          </Link>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-16">
         <SectionHead
           title="My Current Period"

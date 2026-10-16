@@ -1,6 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import ChatPanel from "@/components/ChatPanel";
+import { closeCompanion, useCompanion } from "@/lib/companion";
 import { INDEX_PATH } from "@/lib/screens";
 import AppHeader from "./AppHeader";
 import AuthGuard from "./AuthGuard";
@@ -13,6 +16,9 @@ import { getShellConfig } from "./shell-config";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { header, nav, fullBleed } = getShellConfig(pathname);
+  const companion = useCompanion();
+  // Going anywhere from the companion's nav closes it.
+  useEffect(() => closeCompanion(), [pathname]);
 
   // The internal screen index sits outside the product shell.
   if (pathname === INDEX_PATH) return <AuthGuard>{children}</AuthGuard>;
@@ -31,6 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
         {nav && <BottomNav active={nav.active} />}
+        <ChatPanel moduleKey={companion.moduleKey} open={companion.open} firstMessage={companion.firstMessage} onClose={closeCompanion} />
         <IndexButton />
       </div>
     </AuthGuard>

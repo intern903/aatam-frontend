@@ -33,6 +33,8 @@ const config: Config = {
       ring: "#b0b0b0", // Figma grid/light grey — life-wheel rings
       line: "#e3ded8", // unticked checklist circles (Life Purpose)
       olive: "#414a32", // current page dot (Previous Drafts)
+      // Figma "CCA - Start" / "CCA - Chat"
+      chat: { line: "#b5b5b5", bubble: "#e9ecef", muted: "#7b7b7b" },
 
       primary: ramp(["#e5f1e5", "#cbe2cc", "#b2d4b2", "#98c599", "#7eb77f", "#659266", "#4c6e4c", "#324933"]),
       pink: ramp(["#fae8e6", "#f5d1cc", "#f1bab3", "#eca399", "#e78c80", "#b97066", "#8b544d", "#5c3833"]),

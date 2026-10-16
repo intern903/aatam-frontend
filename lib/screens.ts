@@ -63,6 +63,7 @@ export const screens: Screen[] = [
   { module: "Values & Qualities", step: 5, title: "Results", path: "/values/results", built: true },
   { module: "Values & Qualities", step: 6, title: "My Values (Foundation)", path: "/values/mine", built: true },
   { module: "Values & Qualities", step: 7, title: "My Qualities (Foundation)", path: "/values/qualities", built: true },
+  { module: "My Outcomes", step: 0, title: "Today (tracking; a tick opens the companion)", path: "/outcomes/today", built: true },
   { module: "My Outcomes", step: 1, title: "Current period (notes, days left)", path: "/outcomes/period", built: true },
   { module: "My Outcomes", step: 2, title: "Prior periods + trend", path: "/outcomes/prior", built: true },
   { module: "My Outcomes", step: 3, title: "Close the period, one outcome at a time", path: "/outcomes/closing", built: true },

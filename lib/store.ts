@@ -108,7 +108,7 @@ function emptyOutcomes(): AppState["outcomes"] {
 }
 
 /** Saved outcomes from before notes, tracking and the close get the new fields. */
-const withOutcomeDefaults = (o: Outcome): Outcome => ({ ...o, track: o.track ?? false, notes: o.notes ?? [], closed: o.closed ?? false });
+const withOutcomeDefaults = (o: Outcome): Outcome => ({ ...o, track: o.track ?? false, notes: o.notes ?? [], ticks: o.ticks ?? [], closed: o.closed ?? false });
 
 /** A life code saved in the old shape (one area, three free-text answers) moves to the new one. */
 function migrateLifeCode(c: LifeCode & { lifeArea?: LifeAreaId; answers?: { whenUse?: string } }): LifeCode {
@@ -599,6 +599,10 @@ export function addOutcomeNote(outcomeId: string, text: string) {
 export function removeOutcomeNote(outcomeId: string, noteId: string) {
   update((s) => mapCurrent(s, outcomeId, (o) => ({ ...o, notes: o.notes.filter((n) => n.id !== noteId) })));
 }
+/** Today's tick on a tracked outcome (one per day). Ticking is not the close: Done is said there. */
+export function toggleTick(id: string, date: string) {
+  update((s) => mapCurrent(s, id, (o) => ({ ...o, ticks: o.ticks.includes(date) ? o.ticks.filter((d) => d !== date) : [...o.ticks, date] })));
+}
 /** The close, one outcome at a time: Done or Not done (and a Being outcome's score). */
 export function reviewOutcome(id: string, done: boolean, score?: number | null) {
   update((s) => mapCurrent(s, id, (o) => ({ ...o, done, closed: true, score: score === undefined ? o.score : score })));
@@ -639,7 +643,7 @@ export function setDraftEnd(end: string | null) {
   update((s) => withDraft(s, { end }));
 }
 export function addDraftOutcome(input: { lifeArea: LifeAreaId; type: OutcomeType; text: string; goalId: string | null; track: boolean }) {
-  const outcome: Outcome = { ...input, id: newId("o"), priority: null, done: false, score: null, notes: [], closed: false };
+  const outcome: Outcome = { ...input, id: newId("o"), priority: null, done: false, score: null, notes: [], ticks: [], closed: false };
   update((s) => withDraft(s, { outcomes: [...s.outcomes.draft.outcomes, outcome] }));
 }
 export function removeDraftOutcome(id: string) {

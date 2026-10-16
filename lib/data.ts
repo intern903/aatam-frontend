@@ -144,6 +144,7 @@ export type Outcome = {
   done: boolean; // said at the close: Done or Not done, nothing in between
   score: number | null; // Being outcomes, out of 10; null until scored
   notes: OutcomeNote[];
+  ticks: string[]; // ISO dates ticked on Today (tracked Doing outcomes)
   closed: boolean; // reviewed in this period's close
 };
 
@@ -644,12 +645,12 @@ export const lifeCodes: LifeCode[] = [
 export const currentPeriod: Period = { id: "p-7", number: 7, start: "2026-10-07", end: "2026-10-21" };
 
 export const currentOutcomes: Outcome[] = [
-  { id: "o-1", lifeArea: "health", type: "Doing", text: "Run three mornings a week before opening my inbox", priority: 1, goalId: "kr-1", track: true, done: true, score: null, notes: [{ id: "n-1", at: "2026-10-12T07:40:00", text: "Running felt easier after laying the clothes out the night before." }], closed: false },
-  { id: "o-2", lifeArea: "money", type: "Doing", text: "Move my salary into my own account on the first", priority: 2, goalId: "kr-2", track: false, done: true, score: null, notes: [], closed: false },
-  { id: "o-3", lifeArea: "career", type: "Doing", text: "Hand the bakery review to Kavya and stay out of it", priority: 3, goalId: "kr-5", track: false, done: false, score: null, notes: [], closed: false },
-  { id: "o-4", lifeArea: "family", type: "Being", text: "Be fully present at dinner, phone in the drawer", priority: null, goalId: null, track: false, done: false, score: 7, notes: [], closed: false },
-  { id: "o-5", lifeArea: "fun", type: "Being", text: "Feel unhurried on my Sunday sketch walk", priority: null, goalId: "kr-4", track: false, done: false, score: null, notes: [], closed: false },
-  { id: "o-6", lifeArea: "fun", type: "Doing", text: "Fill four pages of my sketchbook", priority: null, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
+  { id: "o-1", lifeArea: "health", type: "Doing", text: "Run three mornings a week before opening my inbox", priority: 1, goalId: "kr-1", track: true, done: true, score: null, notes: [{ id: "n-1", at: "2026-10-12T07:40:00", text: "Running felt easier after laying the clothes out the night before." }], ticks: ["2026-10-08", "2026-10-10", "2026-10-13", "2026-10-15"], closed: false },
+  { id: "o-2", lifeArea: "money", type: "Doing", text: "Move my salary into my own account on the first", priority: 2, goalId: "kr-2", track: false, done: true, score: null, notes: [], ticks: [], closed: false },
+  { id: "o-3", lifeArea: "career", type: "Doing", text: "Hand the bakery review to Kavya and stay out of it", priority: 3, goalId: "kr-5", track: false, done: false, score: null, notes: [], ticks: [], closed: false },
+  { id: "o-4", lifeArea: "family", type: "Being", text: "Be fully present at dinner, phone in the drawer", priority: null, goalId: null, track: true, done: false, score: 7, notes: [], ticks: [], closed: false },
+  { id: "o-5", lifeArea: "fun", type: "Being", text: "Feel unhurried on my Sunday sketch walk", priority: null, goalId: "kr-4", track: false, done: false, score: null, notes: [], ticks: [], closed: false },
+  { id: "o-6", lifeArea: "fun", type: "Doing", text: "Fill four pages of my sketchbook", priority: null, goalId: null, track: true, done: false, score: null, notes: [], ticks: [], closed: false },
 ];
 
 export const pastPeriods: PastPeriod[] = [
@@ -662,9 +663,9 @@ export const pastPeriods: PastPeriod[] = [
     priority: 100,
     wellbeing: 6.8,
     outcomes: [
-      { id: "p6-o1", lifeArea: "money", type: "Doing", text: "Set up the standing instruction for my salary", priority: 1, goalId: "kr-2", track: false, done: true, score: null, notes: [], closed: false },
-      { id: "p6-o2", lifeArea: "career", type: "Doing", text: "Write job descriptions for two team leads", priority: 2, goalId: "kr-5", track: false, done: true, score: null, notes: [], closed: false },
-      { id: "p6-o3", lifeArea: "health", type: "Doing", text: "Be in bed before midnight five nights a week", priority: null, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
+      { id: "p6-o1", lifeArea: "money", type: "Doing", text: "Set up the standing instruction for my salary", priority: 1, goalId: "kr-2", track: false, done: true, score: null, notes: [], ticks: [], closed: false },
+      { id: "p6-o2", lifeArea: "career", type: "Doing", text: "Write job descriptions for two team leads", priority: 2, goalId: "kr-5", track: false, done: true, score: null, notes: [], ticks: [], closed: false },
+      { id: "p6-o3", lifeArea: "health", type: "Doing", text: "Be in bed before midnight five nights a week", priority: null, goalId: null, track: false, done: false, score: null, notes: [], ticks: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-4", "lc-5"],
   },
@@ -677,9 +678,9 @@ export const pastPeriods: PastPeriod[] = [
     priority: 67,
     wellbeing: 8.0,
     outcomes: [
-      { id: "p5-o1", lifeArea: "health", type: "Doing", text: "Run twice a week, even if it is only twenty minutes", priority: 1, goalId: "kr-1", track: false, done: true, score: null, notes: [], closed: false },
-      { id: "p5-o2", lifeArea: "family", type: "Being", text: "Be patient with Amma when she rearranges my kitchen", priority: 2, goalId: null, track: false, done: false, score: 6, notes: [], closed: false },
-      { id: "p5-o3", lifeArea: "career", type: "Doing", text: "Ask the team for their ideas before sharing mine", priority: 3, goalId: null, track: false, done: true, score: null, notes: [], closed: false },
+      { id: "p5-o1", lifeArea: "health", type: "Doing", text: "Run twice a week, even if it is only twenty minutes", priority: 1, goalId: "kr-1", track: false, done: true, score: null, notes: [], ticks: [], closed: false },
+      { id: "p5-o2", lifeArea: "family", type: "Being", text: "Be patient with Amma when she rearranges my kitchen", priority: 2, goalId: null, track: false, done: false, score: 6, notes: [], ticks: [], closed: false },
+      { id: "p5-o3", lifeArea: "career", type: "Doing", text: "Ask the team for their ideas before sharing mine", priority: 3, goalId: null, track: false, done: true, score: null, notes: [], ticks: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-1", "lc-3", "lc-6"],
   },
@@ -692,8 +693,8 @@ export const pastPeriods: PastPeriod[] = [
     priority: 50,
     wellbeing: 5.5,
     outcomes: [
-      { id: "p4-o1", lifeArea: "family", type: "Doing", text: "Close the laptop at seven on weekdays", priority: 1, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
-      { id: "p4-o2", lifeArea: "fun", type: "Doing", text: "Spend one Saturday afternoon painting", priority: 2, goalId: "kr-4", track: false, done: true, score: null, notes: [], closed: false },
+      { id: "p4-o1", lifeArea: "family", type: "Doing", text: "Close the laptop at seven on weekdays", priority: 1, goalId: null, track: false, done: false, score: null, notes: [], ticks: [], closed: false },
+      { id: "p4-o2", lifeArea: "fun", type: "Doing", text: "Spend one Saturday afternoon painting", priority: 2, goalId: "kr-4", track: false, done: true, score: null, notes: [], ticks: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-2", "lc-7"],
   },

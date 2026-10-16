@@ -185,8 +185,20 @@ const TONES = [
 export const tone = (i: number) => TONES[i % TONES.length];
 
 /** Ten 20px boxes, 4px apart: the first `score` filled. Tapping box n scores n. */
-export function ScoreBoxes({ score, toneIndex, onPick, label }: { score: number | null; toneIndex: number; onPick?: (n: number) => void; label: string }) {
-  const t = tone(toneIndex);
+export function ScoreBoxes({
+  score,
+  toneIndex = 0,
+  colours,
+  onPick,
+  label,
+}: {
+  score: number | null;
+  toneIndex?: number;
+  colours?: { on: string; off: string }; // a life area's colours instead of the rotation
+  onPick?: (n: number) => void;
+  label: string;
+}) {
+  const t = colours ?? tone(toneIndex);
   return (
     <div className="flex w-full gap-4" role={onPick ? "radiogroup" : undefined} aria-label={label}>
       {Array.from({ length: 10 }, (_, i) => {

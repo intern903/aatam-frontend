@@ -92,7 +92,7 @@ export default function HomePage() {
 
       {/* My Companion — the butterfly; opens the CCA chat, no progress state */}
       <div className="absolute" style={{ left: 91, top: 631 }}>
-        <ModuleLabel label="My Companion" onClick={openCompanion} />
+        <ModuleLabel label="My Companion" onClick={() => openCompanion("home")} />
       </div>
 
       {showPopup && <CoachPopup onClose={() => setShowPopup(false)} />}

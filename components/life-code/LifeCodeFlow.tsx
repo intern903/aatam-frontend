@@ -31,7 +31,7 @@ export default function LifeCodeFlow({
   onCancel,
 }: {
   title?: string;
-  initial?: LifeCodeInput;
+  initial?: Partial<LifeCodeInput>; // an edit, or a statement captured in the companion chat
   onSave: (input: LifeCodeInput) => void;
   onCancel: () => void;
 }) {
@@ -40,7 +40,7 @@ export default function LifeCodeFlow({
   const [areas, setAreas] = useState<LifeAreaId[]>(initial?.allLifeAreas ? [] : initial?.lifeAreas ?? []);
   const [all, setAll] = useState(initial?.allLifeAreas ?? false);
   const [type, setType] = useState<LifeCodeType | null>(initial?.type ?? null);
-  const [typeChosen, setTypeChosen] = useState(!!initial); // once the client picks, step 3 stops suggesting
+  const [typeChosen, setTypeChosen] = useState(!!initial?.type); // once the client picks, step 3 stops suggesting
   const [how, setHow] = useState(initial?.howOrWhenToUse ?? "");
 
   const hasAreas = all || areas.length > 0;
