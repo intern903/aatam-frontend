@@ -74,20 +74,29 @@ const definitions: Record<ModuleId, Definition> = {
       ),
   },
 
-  // Values & Qualities: quiz results selected, then the final choice.
+  // Values & Qualities: one discovery run finds both. Started once the first question is answered,
+  // finished once the client confirms the results. The intro offers "Continue where I left off".
   values: {
-    finalHref: "/values",
-    pieces: ({ values }) => [
-      { done: values.selected.length > 0, resume: "/values/quiz" },
-      { done: values.final.length > 0, resume: "/values/choose" },
-    ],
+    finalHref: "/values/mine",
+    startHref: "/values", // the client starts the discovery on their own
+    pieces: ({ values, discovery }) => {
+      const confirmed = values.final.length > 0 || values.added.length > 0;
+      return [
+        { done: confirmed || (discovery?.state.answered ?? 0) > 0, resume: "/values" },
+        { done: confirmed, resume: "/values" },
+      ];
+    },
   },
   qualities: {
-    finalHref: "/qualities",
-    pieces: ({ qualities }) => [
-      { done: qualities.selected.length > 0, resume: "/values/quiz" },
-      { done: qualities.final.length > 0, resume: "/qualities/choose" },
-    ],
+    finalHref: "/values/qualities",
+    startHref: "/values",
+    pieces: ({ qualities, discovery }) => {
+      const confirmed = qualities.final.length > 0 || qualities.added.length > 0;
+      return [
+        { done: confirmed || (discovery?.state.answered ?? 0) > 0, resume: "/values" },
+        { done: confirmed, resume: "/values" },
+      ];
+    },
   },
 
   // Guidelines: every active life code needs its statement and three answers.

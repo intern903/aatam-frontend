@@ -14,6 +14,7 @@ import {
   type CifColumns,
   type CifState,
 } from "./cif";
+import type { FinalView, Run } from "./discovery";
 import * as data from "./data";
 import type {
   CifAnswers,
@@ -66,8 +67,13 @@ export type AppState = {
   };
   // added: life areas the client added on the Visions screen, on top of their CIF focus areas.
   visions: { byLifeArea: Partial<Record<LifeAreaId, Vision>>; added: LifeAreaId[] };
-  values: { selected: Trait[]; final: string[] };
-  qualities: { selected: Trait[]; final: string[] };
+  // Values & Qualities: written when the client confirms their discovery results.
+  // selected = the confirmed list (ranked), final = their ids, added = the client's own additions.
+  values: { selected: Trait[]; final: string[]; added: string[] };
+  qualities: { selected: Trait[]; final: string[]; added: string[] };
+  // The discovery run in progress (lib/discovery.ts), saved after every answer so the client can
+  // leave and come back to the exact question. null = never started.
+  discovery: Run | null;
   outcomes: { currentPeriod: Outcome[]; pastPeriods: PastPeriod[] };
   wellbeing: { scores: Record<string, number | null>; pastScores: PastScores[] };
   lifeCodes: LifeCode[];
@@ -102,8 +108,10 @@ function sampleState(): AppState {
     lifePurpose: emptyLifePurpose(),
     // Visions start empty too: the client writes their own (Meera's are a demo load in /_index).
     visions: { byLifeArea: {}, added: [] },
-    values: { selected: data.values, final: data.finalValueIds },
-    qualities: { selected: data.qualities, final: data.finalQualityIds },
+    // Values & Qualities start empty: the client finds their own (Meera's are a demo load in /_index).
+    values: { selected: [], final: [], added: [] },
+    qualities: { selected: [], final: [], added: [] },
+    discovery: null,
     outcomes: { currentPeriod: data.currentOutcomes, pastPeriods: data.pastPeriods },
     wellbeing: { scores: data.wellbeingScores, pastScores: data.pastWellbeingScores },
     lifeCodes: data.lifeCodes,
@@ -137,6 +145,13 @@ function read(): AppState | null {
     if (saved.visions) {
       const untouched = JSON.stringify(saved.visions.byLifeArea) === JSON.stringify(sampleVisions());
       saved.visions = { byLifeArea: untouched ? {} : saved.visions.byLifeArea ?? {}, added: saved.visions.added ?? [] };
+    }
+    // Values & Qualities: "added" came later; Meera's sample lists, still untouched, are cleared.
+    for (const key of ["values", "qualities"] as const) {
+      const slice = saved[key];
+      if (!slice) continue;
+      const untouched = JSON.stringify(slice.selected) === JSON.stringify(key === "values" ? data.values : data.qualities);
+      saved[key] = untouched ? { selected: [], final: [], added: [] } : { ...slice, added: slice.added ?? [] };
     }
     return { ...sample, ...saved };
   } catch {
@@ -453,6 +468,49 @@ export function removeVision(lifeArea: LifeAreaId) {
 }
 
 // Values & Qualities
+export function setDiscovery(run: Run | null) {
+  update((s) => ({ ...s, discovery: run }));
+}
+/** Saves the confirmed discovery results as the client's values and qualities. */
+export function saveDiscoveryResults(view: FinalView) {
+  const trait = (x: FinalView["values"][number]): Trait => ({
+    id: x.key,
+    name: x.name,
+    strength: x.label,
+    moments: x.trail,
+    score: x.score,
+  });
+  const values = view.values.map(trait);
+  const qualities = view.qualities.map(trait);
+  update((s) => ({
+    ...s,
+    values: {
+      selected: values,
+      final: values.map((v) => v.id),
+      added: view.added.filter((a) => a.type !== "quality").map((a) => a.name),
+    },
+    qualities: {
+      selected: qualities,
+      final: qualities.map((q) => q.id),
+      added: view.added.filter((a) => a.type === "quality").map((a) => a.name),
+    },
+  }));
+}
+export function loadSampleValues() {
+  update((s) => ({
+    ...s,
+    values: { selected: data.values, final: data.finalValueIds, added: [] },
+    qualities: { selected: data.qualities, final: data.finalQualityIds, added: [] },
+  }));
+}
+export function clearValues() {
+  update((s) => ({
+    ...s,
+    values: { selected: [], final: [], added: [] },
+    qualities: { selected: [], final: [], added: [] },
+    discovery: null,
+  }));
+}
 export function setSelectedValues(selected: Trait[]) {
   update((s) => ({ ...s, values: { ...s.values, selected } }));
 }

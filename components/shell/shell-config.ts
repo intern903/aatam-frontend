@@ -35,7 +35,15 @@ const routes: Record<string, ShellConfig> = {
   // overview screens (Figma "Vision - Flow Screen 11" / "Final Screen"), not inside the flow.
   "/visions": { header: null, nav: { active: "foundation" } },
   "/visions/all": { header: null, nav: { active: "foundation" } },
-  "/values": { header: { back: true, search: true, backHref: "/life-purpose/final" }, nav: { active: "foundation" } },
+  // Values & Qualities discovery: no app header or nav (Figma "VQ - Begin" frames); the two
+  // confirmed lists sit in My Foundation with the nav, whose Home goes back to the home page.
+  "/values": { header: null, nav: null },
+  "/values/q": { header: null, nav: null },
+  "/values/tradeoff": { header: null, nav: null },
+  "/values/checks": { header: null, nav: null },
+  "/values/results": { header: null, nav: null },
+  "/values/mine": { header: null, nav: { active: "foundation" } },
+  "/values/qualities": { header: null, nav: { active: "foundation" } },
   "/settings": {
     header: { back: true, search: true, title: "Settings", backHref: "/" },
     nav: { active: null },

@@ -82,9 +82,9 @@ export default function FinalPage() {
       </Link>
       <p className="absolute left-[56px] top-[757px] w-[154px] text-caption text-ink-50">My Life Purpose, expressed in each area of my life</p>
       <div className="absolute right-[64px] top-[828px]">
-        <MapNode href="/values" icon="/icons/star-green.svg" label="My Values & Qualities" />
+        <MapNode href="/values/mine" icon="/icons/star-green.svg" label="My Values & Qualities" />
       </div>
-      <Link href="/values" className="absolute right-[56px] top-[904px] whitespace-nowrap font-heading text-h4 text-black">
+      <Link href="/values/mine" className="absolute right-[56px] top-[904px] whitespace-nowrap font-heading text-h4 text-black">
         My Values &amp; Qualities
       </Link>
       <p className="absolute right-[80px] top-[930px] w-[193px] text-center text-caption text-ink-50">
