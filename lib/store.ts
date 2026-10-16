@@ -64,7 +64,8 @@ export type AppState = {
     makeItReal: number[]; // "Make it real" suggestions the client has ticked
     bodyFeel: string; // "I feel this most in my …"
   };
-  visions: { byLifeArea: Partial<Record<LifeAreaId, Vision>> };
+  // added: life areas the client added on the Visions screen, on top of their CIF focus areas.
+  visions: { byLifeArea: Partial<Record<LifeAreaId, Vision>>; added: LifeAreaId[] };
   values: { selected: Trait[]; final: string[] };
   qualities: { selected: Trait[]; final: string[] };
   outcomes: { currentPeriod: Outcome[]; pastPeriods: PastPeriod[] };
@@ -99,9 +100,8 @@ function sampleState(): AppState {
     },
     // Life Purpose starts empty: the client adds their own stories, clusters and statement.
     lifePurpose: emptyLifePurpose(),
-    visions: {
-      byLifeArea: Object.fromEntries(data.visions.map((v) => [v.lifeArea, v])),
-    },
+    // Visions start empty too: the client writes their own (Meera's are a demo load in /_index).
+    visions: { byLifeArea: {}, added: [] },
     values: { selected: data.values, final: data.finalValueIds },
     qualities: { selected: data.qualities, final: data.finalQualityIds },
     outcomes: { currentPeriod: data.currentOutcomes, pastPeriods: data.pastPeriods },
@@ -132,6 +132,11 @@ function read(): AppState | null {
       if (lp.statement === data.lifePurposeStatement && lp.stories?.[0]?.id === "story-1") {
         saved.lifePurpose = emptyLifePurpose();
       }
+    }
+    // Visions: the "added" list came later; Meera's sample visions, still untouched, are cleared.
+    if (saved.visions) {
+      const untouched = JSON.stringify(saved.visions.byLifeArea) === JSON.stringify(sampleVisions());
+      saved.visions = { byLifeArea: untouched ? {} : saved.visions.byLifeArea ?? {}, added: saved.visions.added ?? [] };
     }
     return { ...sample, ...saved };
   } catch {
@@ -411,6 +416,20 @@ export function setPurposeStatus(status: PurposeStatus) {
 }
 
 // Visions
+function sampleVisions() {
+  return Object.fromEntries(data.visions.map((v) => [v.lifeArea, v])) as Partial<Record<LifeAreaId, Vision>>;
+}
+export function loadSampleVisions() {
+  update((s) => ({ ...s, visions: { ...s.visions, byLifeArea: sampleVisions() } }));
+}
+export function clearVisions() {
+  update((s) => ({ ...s, visions: { byLifeArea: {}, added: [] } }));
+}
+export function addVisionArea(lifeArea: LifeAreaId) {
+  update((s) =>
+    s.visions.added.includes(lifeArea) ? s : { ...s, visions: { ...s.visions, added: [...s.visions.added, lifeArea] } },
+  );
+}
 export function setVision(lifeArea: LifeAreaId, patch: Partial<Omit<Vision, "lifeArea">>) {
   update((s) => {
     const current: Vision = s.visions.byLifeArea[lifeArea] ?? {
@@ -421,7 +440,7 @@ export function setVision(lifeArea: LifeAreaId, patch: Partial<Omit<Vision, "lif
     };
     return {
       ...s,
-      visions: { byLifeArea: { ...s.visions.byLifeArea, [lifeArea]: { ...current, ...patch } } },
+      visions: { ...s.visions, byLifeArea: { ...s.visions.byLifeArea, [lifeArea]: { ...current, ...patch } } },
     };
   });
 }
@@ -429,7 +448,7 @@ export function removeVision(lifeArea: LifeAreaId) {
   update((s) => {
     const byLifeArea = { ...s.visions.byLifeArea };
     delete byLifeArea[lifeArea];
-    return { ...s, visions: { byLifeArea } };
+    return { ...s, visions: { ...s.visions, byLifeArea } };
   });
 }
 

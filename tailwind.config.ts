@@ -167,6 +167,11 @@ const config: Config = {
         "power-card": "200px", // power words photo card on the writing screen
         "draft-card": "295px", // draft statement card
         "purpose-card": "330px", // final statement card
+        "foundation-map": "1141px", // Figma "LP - Final State" frame, scrolled
+        "purpose-banner": "244px", // Life Purpose card above the Vision screens
+        "answer-box": "100px", // Vision answer and statement fields
+        "answer-card": "138px", // Vision write: earlier answers, scrolled sideways
+        "vision-board": "520px", // Vision board canvas (not in Figma)
         "booking-panel": "401px", // "Book a call with Dinesh" panel
         "logo-large": "200px",
       },
@@ -198,6 +203,7 @@ const config: Config = {
         node: "68px", // Life Purpose map nodes (dashed ring)
         "node-inner": "60px",
         "icon-lg": "32px",
+        "board-photo": "120px", // a photo on the vision board (not in Figma)
       },
     },
   },

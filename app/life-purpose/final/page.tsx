@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import PopUpSheet from "@/components/PopUpSheet";
 import { LpHeader, MapNode, StatementGlass } from "@/components/life-purpose/ui";
 import { useSwipe } from "@/components/life-purpose/useSwipe";
@@ -10,9 +11,11 @@ import BottomNav from "@/components/shell/BottomNav";
 import { clusterColour, storiesForCluster } from "@/lib/lifePurpose";
 import { useApp } from "@/lib/store";
 
-// Figma "LP - Final State" — the screen the nav's "My Foundation" opens.
-// No scrolling: swipe right (or →) for the stories gallery, swipe left (or ←) for Visions.
-// Positions are the Figma frame's; anything past the screen's height is cut off, as in the frame.
+// Figma "LP - Final State" (1545:2614) — the screen the nav's "My Foundation" always opens.
+// The frame is taller than the phone (1141px), so the page scrolls down to My Visions and
+// My Values & Qualities; each node opens its own module. Swipe right (or →) for the stories
+// gallery, swipe left (or ←) for Visions.
+// Positions are the Figma frame's.
 // Life Purpose flow, step 23: each power word in the statement wears its cluster's colour; tapping
 // it opens the phrases in that cluster and the stories they came from.
 export default function FinalPage() {
@@ -20,18 +23,13 @@ export default function FinalPage() {
   const { lifePurpose: lp } = useApp();
   const [open, setOpen] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (lp.status !== "final") router.replace("/life-purpose");
-  }, [lp.status, router]);
-
   const toStories = useCallback(() => router.push("/life-purpose/stories-view"), [router]);
   const toVisions = useCallback(() => router.push("/visions"), [router]);
   const swipe = useSwipe({ onSwipeRight: toStories, onSwipeLeft: toVisions });
-
-  if (lp.status !== "final") return null;
+  const isFinal = lp.status === "final";
 
   return (
-    <main {...swipe} className="relative h-[100dvh] w-full touch-pan-y overflow-hidden">
+    <main {...swipe} className="relative h-foundation-map w-full touch-pan-y overflow-x-clip">
       <div className="absolute inset-x-32 top-0">
         <LpHeader search />
       </div>
@@ -44,7 +42,7 @@ export default function FinalPage() {
       <p className="absolute left-[108px] top-[135px] font-heading text-h4 text-black">My Life Stories</p>
       <p className="absolute left-[108px] top-[161px] w-[155px] text-caption text-ink-50">Situations from where you get through your life</p>
 
-      {lp.bodyFeel && (
+      {isFinal && lp.bodyFeel && (
         <div className="absolute left-32 top-[222px] flex w-content items-center justify-center gap-12 rounded-pill bg-primary-600 px-12 py-8">
           <span className="size-12 rounded-pill bg-white" />
           <span className="text-body-medium text-white">I feel this most in my {lp.bodyFeel}.</span>
@@ -60,22 +58,38 @@ export default function FinalPage() {
         </div>
         {/* Figma places this at y 173; anchored to the bottom so longer statements still fit. */}
         <div className="absolute inset-x-16 bottom-16">
-          <StatementGlass statement={lp.statement} powerWords={lp.clusters.map((c) => c.name)} onWord={setOpen} />
+          {isFinal ? (
+            <StatementGlass statement={lp.statement} powerWords={lp.clusters.map((c) => c.name)} onWord={setOpen} />
+          ) : (
+            // Not in Figma: until the purpose feels true, the card leads back into the module.
+            <div className="flex flex-col items-start gap-12 rounded-12 bg-white/10 p-16 backdrop-blur-[2px]">
+              <p className="text-body text-white">Your life purpose will appear here once it feels true.</p>
+              <Link href="/life-purpose" className="rounded-8 bg-primary-600 px-16 py-8 text-button-cta text-white">
+                {lp.status === "empty" ? "Find my life purpose" : "Continue my life purpose"}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-      {/* Not on the Figma frame (it appeared on an earlier version): the swipe hint. */}
-      <p className="absolute inset-x-0 top-[622px] text-center text-caption text-ink-50">Swipe right for stories, left for visions</p>
 
       {/* My Visions / My Values & Qualities, joined by the dashed path */}
       <Image src="/images/life-purpose/connector-final-bottom.svg" alt="" width={229} height={261} className="absolute left-[72px] top-[604px]" />
       <div className="absolute left-[64px] top-[655px]">
         <MapNode href="/visions" icon="/icons/eye-green.svg" label="My Visions" />
       </div>
-      <p className="absolute right-[233px] top-[731px] whitespace-nowrap font-heading text-h4 text-black">My Visions</p>
-      <p className="absolute left-[64px] top-[757px] w-[154px] text-caption text-ink-50">My Life Purpose, expressed in each area of my life</p>
+      <Link href="/visions" className="absolute right-[233px] top-[731px] whitespace-nowrap font-heading text-h4 text-black">
+        My Visions
+      </Link>
+      <p className="absolute left-[56px] top-[757px] w-[154px] text-caption text-ink-50">My Life Purpose, expressed in each area of my life</p>
       <div className="absolute right-[64px] top-[828px]">
         <MapNode href="/values" icon="/icons/star-green.svg" label="My Values & Qualities" />
       </div>
+      <Link href="/values" className="absolute right-[56px] top-[904px] whitespace-nowrap font-heading text-h4 text-black">
+        My Values &amp; Qualities
+      </Link>
+      <p className="absolute right-[80px] top-[930px] w-[193px] text-center text-caption text-ink-50">
+        “Why” behind my choices and “How” I feel when living on my values
+      </p>
 
       <BottomNav active="foundation" />
 

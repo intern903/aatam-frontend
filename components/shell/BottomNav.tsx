@@ -12,7 +12,7 @@ import type { NavItem } from "./shell-config";
 
 const items: { key: NavItem; label: string; icon: string; href?: string }[] = [
   { key: "home", label: "My Home", icon: "/icons/home.svg", href: "/" },
-  // Figma links this to "LP - Final State" (it falls back to /life-purpose until the purpose is final).
+  // Figma links this to "LP - Final State"; it always opens there, finished or not.
   { key: "foundation", label: "My Foundation", icon: "/icons/foundation.svg", href: "/life-purpose/final" },
   { key: "journey", label: "My Journey", icon: "/icons/compass.svg", href: "/journey" },
   { key: "companion", label: "My Companion", icon: "/icons/companion.svg" },

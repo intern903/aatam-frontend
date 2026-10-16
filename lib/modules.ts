@@ -64,15 +64,13 @@ const definitions: Record<ModuleId, Definition> = {
   },
 
   // Vision: for each life area started, the four questions plus the "I ..." statement.
+  // The four questions are optional, so a vision counts as done once its statement is written.
   vision: {
-    finalHref: "/visions",
+    finalHref: "/visions/all",
+    startHref: "/visions", // the client starts Visions on their own
     pieces: ({ visions }) =>
       Object.values(visions.byLifeArea).flatMap((v) =>
-        v
-          ? [v.answers.livedOnPurpose, v.answers.doOrBe, v.answers.energizingValues, v.answers.lifetime, v.statement].map(
-              (text) => ({ done: filled(text), resume: `/visions/${v.lifeArea}` }),
-            )
-          : [],
+        v ? [{ done: filled(v.statement), resume: `/visions/${v.lifeArea}/write` }] : [],
       ),
   },
 

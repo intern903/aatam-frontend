@@ -31,6 +31,11 @@ const routes: Record<string, ShellConfig> = {
   "/life-purpose/final": { header: null, nav: null, fullBleed: true },
   "/life-purpose/stories-view": { header: null, nav: null, fullBleed: true },
   "/book-call": { header: null, nav: null },
+  // Visions draw the Life Purpose card where a header would be; the nav shows on the two
+  // overview screens (Figma "Vision - Flow Screen 11" / "Final Screen"), not inside the flow.
+  "/visions": { header: null, nav: { active: "foundation" } },
+  "/visions/all": { header: null, nav: { active: "foundation" } },
+  "/values": { header: { back: true, search: true, backHref: "/life-purpose/final" }, nav: { active: "foundation" } },
   "/settings": {
     header: { back: true, search: true, title: "Settings", backHref: "/" },
     nav: { active: null },
@@ -50,6 +55,11 @@ const fallback: ShellConfig = {
   nav: { active: null },
 };
 
+// /visions/[area]/questions, /write, /deeper and /board: no header, no nav.
+const visionStep: ShellConfig = { header: null, nav: null };
+
 export function getShellConfig(pathname: string): ShellConfig {
-  return routes[pathname] ?? fallback;
+  if (routes[pathname]) return routes[pathname];
+  if (pathname.startsWith("/visions/")) return visionStep;
+  return fallback;
 }
