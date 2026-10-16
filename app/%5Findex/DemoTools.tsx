@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  clearEngine,
   clearLifePurpose,
   clearValues,
   clearVisions,
+  loadSampleEngine,
   loadSampleLifePurpose,
   loadSampleValues,
   loadSampleVisions,
@@ -13,7 +15,7 @@ import {
 // Internal demo controls (not part of the product): Life Purpose starts empty for real
 // clients, so these load Meera's sample to preview the draft and final screens. Visions too.
 export default function DemoTools() {
-  const { lifePurpose, visions, values } = useApp();
+  const { lifePurpose, visions, values, outcomes, lifeCodes } = useApp();
   return (
     <section>
       <h2>Life Purpose demo data</h2>
@@ -51,6 +53,20 @@ export default function DemoTools() {
         {" · "}
         <button type="button" className="underline" onClick={clearValues}>
           Clear values, qualities and the discovery run
+        </button>
+      </p>
+      <h2>Outcomes, Well-Being &amp; Life Code demo data</h2>
+      <p>
+        Now: {outcomes.period ? `period ${outcomes.period.number} running` : "no period"} · {outcomes.pastPeriods.length} past ·{" "}
+        {lifeCodes.length} life codes
+      </p>
+      <p>
+        <button type="button" className="underline" onClick={loadSampleEngine}>
+          Load Meera&apos;s period 7, past periods and life codes
+        </button>
+        {" · "}
+        <button type="button" className="underline" onClick={clearEngine}>
+          Clear (empty state)
         </button>
       </p>
     </section>

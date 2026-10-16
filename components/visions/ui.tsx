@@ -41,14 +41,29 @@ export function PurposeBanner() {
 }
 
 /** Cancel (outline) · area name (H3) · Save (Primary/600) — the row above each Vision step. */
-export function FlowHeader({ title, onCancel, onSave }: { title: string; onCancel: () => void; onSave: () => void }) {
+export function FlowHeader({
+  title,
+  onCancel,
+  onSave,
+  saveDisabled,
+}: {
+  title: string;
+  onCancel: () => void;
+  onSave: () => void;
+  saveDisabled?: boolean;
+}) {
   return (
     <div className="flex w-full items-center justify-between">
       <button type="button" onClick={onCancel} className="rounded-8 border border-background-700 px-12 py-8 text-button-cta text-background-700">
         Cancel
       </button>
       <h1 className="font-heading text-h3 text-black">{title}</h1>
-      <button type="button" onClick={onSave} className="rounded-8 bg-primary-600 px-12 py-8 text-button-cta text-white">
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saveDisabled}
+        className="rounded-8 bg-primary-600 px-12 py-8 text-button-cta text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
         Save
       </button>
     </div>

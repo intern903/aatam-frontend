@@ -53,6 +53,7 @@ const config: Config = {
         50: "rgb(0 0 0 / 0.5)",
         25: "rgb(0 0 0 / 0.25)",
         brown: "#423827",
+        grey: "#474747", // Figma text/grey — chart legend
         muted: "#a09b93", // eye icon + checkbox border on the auth screens
       },
 

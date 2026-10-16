@@ -99,41 +99,31 @@ const definitions: Record<ModuleId, Definition> = {
     },
   },
 
-  // Guidelines: every active life code needs its statement and three answers.
+  // My Life Code: every active life code has its statement and its "how or when" answer.
+  // The list always opens on its own screen, empty or not.
   guidelines: {
-    finalHref: "/my-life-code",
+    finalHref: "/life-code",
+    startHref: "/life-code",
     pieces: ({ lifeCodes }) =>
       lifeCodes
         .filter((c) => c.status === "active")
         .flatMap((c) =>
-          [c.statement, c.answers.seeOrHear, c.answers.whenUse, c.answers.makeReal].map((text) => ({
-            done: filled(text),
-            resume: `/my-life-code/${c.id}`,
-          })),
+          [c.statement, c.howOrWhenToUse].map((text) => ({ done: filled(text), resume: `/life-code/${c.id}` })),
         ),
   },
 
-  // Journey (current Results Game period): outcomes set and prioritised,
-  // each Doing outcome done, each Being outcome scored, each well-being quality scored.
+  // My Journey (the Engine): a period running, and each of its outcomes reviewed at the close.
+  // Every step opens the current period, which leads on to whatever comes next.
   journey: {
-    finalHref: "/my-outcomes",
-    pieces: ({ outcomes, qualities, wellbeing }) => {
-      const current = outcomes.currentPeriod;
-      if (current.length === 0) return [];
-      const finalQualities = qualities.selected.filter((q) => qualities.final.includes(q.id));
-      return [
-        { done: true, resume: "/journey" },
-        { done: current.some((o) => o.priority !== null), resume: "/journey/prioritize" },
-        ...current.map((o) => ({
-          done: o.type === "Doing" ? o.done : o.score !== null,
-          resume: "/journey",
-        })),
-        ...finalQualities.map((q) => ({
-          done: typeof wellbeing.scores[q.name] === "number",
-          resume: "/my-well-being",
-        })),
-      ];
-    },
+    finalHref: "/outcomes/period",
+    startHref: "/outcomes/period",
+    pieces: ({ outcomes }) =>
+      outcomes.period
+        ? [
+            { done: true, resume: "/outcomes/period" },
+            ...outcomes.currentPeriod.map((o) => ({ done: o.closed, resume: "/outcomes/period" })),
+          ]
+        : [],
   },
 };
 

@@ -23,8 +23,11 @@ import type {
   KeyResult,
   LifeAreaId,
   LifeCode,
+  LifeCodeSource,
   Outcome,
+  OutcomeType,
   PastPeriod,
+  Period,
   PastScores,
   PurposeStatus,
   Story,
@@ -74,8 +77,17 @@ export type AppState = {
   // The discovery run in progress (lib/discovery.ts), saved after every answer so the client can
   // leave and come back to the exact question. null = never started.
   discovery: Run | null;
-  outcomes: { currentPeriod: Outcome[]; pastPeriods: PastPeriod[] };
-  wellbeing: { scores: Record<string, number | null>; pastScores: PastScores[] };
+  // My Outcomes: the period running now (null before the first one), its outcomes in priority
+  // order, the next period while it is being built, and every closed period.
+  outcomes: {
+    period: Period | null;
+    currentPeriod: Outcome[];
+    draft: { end: string | null; outcomes: Outcome[] };
+    pastPeriods: PastPeriod[];
+  };
+  // My Well-Being: this period's scores per quality. submitted = all scored and sent, which is
+  // when last period's numbers may show (never before, so they don't anchor the answer).
+  wellbeing: { scores: Record<string, number | null>; submitted: boolean; pastScores: PastScores[] };
   lifeCodes: LifeCode[];
   settings: {
     notifications: boolean;
@@ -89,6 +101,25 @@ const STORAGE_KEY = "bridge-app";
 
 function emptyLifePurpose(): AppState["lifePurpose"] {
   return { stories: [], powerWords: [], clusters: [], statement: "", status: "empty", drafts: [], makeItReal: [], bodyFeel: "" };
+}
+
+function emptyOutcomes(): AppState["outcomes"] {
+  return { period: null, currentPeriod: [], draft: { end: null, outcomes: [] }, pastPeriods: [] };
+}
+
+/** Saved outcomes from before notes, tracking and the close get the new fields. */
+const withOutcomeDefaults = (o: Outcome): Outcome => ({ ...o, track: o.track ?? false, notes: o.notes ?? [], closed: o.closed ?? false });
+
+/** A life code saved in the old shape (one area, three free-text answers) moves to the new one. */
+function migrateLifeCode(c: LifeCode & { lifeArea?: LifeAreaId; answers?: { whenUse?: string } }): LifeCode {
+  const { lifeArea, answers, ...rest } = c;
+  return {
+    ...rest,
+    lifeAreas: rest.lifeAreas ?? (lifeArea ? [lifeArea] : []),
+    allLifeAreas: rest.allLifeAreas ?? false,
+    howOrWhenToUse: rest.howOrWhenToUse ?? answers?.whenUse ?? "",
+    periodId: rest.periodId ?? null,
+  };
 }
 
 function sampleState(): AppState {
@@ -112,9 +143,10 @@ function sampleState(): AppState {
     values: { selected: [], final: [], added: [] },
     qualities: { selected: [], final: [], added: [] },
     discovery: null,
-    outcomes: { currentPeriod: data.currentOutcomes, pastPeriods: data.pastPeriods },
-    wellbeing: { scores: data.wellbeingScores, pastScores: data.pastWellbeingScores },
-    lifeCodes: data.lifeCodes,
+    // Outcomes, Well-Being and Life Codes start empty too (Meera's are a demo load in /_index).
+    outcomes: emptyOutcomes(),
+    wellbeing: { scores: {}, submitted: false, pastScores: [] },
+    lifeCodes: [],
     settings: { notifications: true, lifeAreaImages: {} },
   };
 }
@@ -152,6 +184,33 @@ function read(): AppState | null {
       if (!slice) continue;
       const untouched = JSON.stringify(slice.selected) === JSON.stringify(key === "values" ? data.values : data.qualities);
       saved[key] = untouched ? { selected: [], final: [], added: [] } : { ...slice, added: slice.added ?? [] };
+    }
+    // Outcomes: the period and the draft came later; Meera's sample period, still untouched, is cleared.
+    if (saved.outcomes) {
+      const o = saved.outcomes as Partial<AppState["outcomes"]>;
+      const untouched = !o.period && o.currentPeriod?.map((x) => x.id).join() === data.currentOutcomes.map((x) => x.id).join();
+      saved.outcomes = untouched
+        ? emptyOutcomes()
+        : {
+            period: o.period ?? null,
+            currentPeriod: (o.currentPeriod ?? []).map(withOutcomeDefaults),
+            draft: o.draft ?? { end: null, outcomes: [] },
+            pastPeriods: o.pastPeriods ?? [],
+          };
+    }
+    if (saved.wellbeing) {
+      const w = saved.wellbeing as Partial<AppState["wellbeing"]>;
+      const untouched = w.submitted === undefined && JSON.stringify(w.scores) === JSON.stringify(data.wellbeingScores);
+      saved.wellbeing = untouched
+        ? { scores: {}, submitted: false, pastScores: [] }
+        : { scores: w.scores ?? {}, submitted: w.submitted ?? false, pastScores: w.pastScores ?? [] };
+    }
+    if (saved.lifeCodes) {
+      // (Only the old-shape sample: a demo load in the new shape is kept.)
+      const untouched =
+        saved.lifeCodes.some((c) => "answers" in c) &&
+        saved.lifeCodes.map((c) => c.statement).join("|") === data.lifeCodes.map((c) => c.statement).join("|");
+      saved.lifeCodes = untouched ? [] : saved.lifeCodes.map(migrateLifeCode);
     }
     return { ...sample, ...saved };
   } catch {
@@ -524,73 +583,136 @@ export function setFinalQualities(ids: string[]) {
   update((s) => ({ ...s, qualities: { ...s.qualities, final: ids } }));
 }
 
-// Outcomes
-export function addOutcome(outcome: Omit<Outcome, "id" | "done" | "score">) {
-  update((s) => ({
-    ...s,
-    outcomes: {
-      ...s.outcomes,
-      currentPeriod: [...s.outcomes.currentPeriod, { ...outcome, id: newId("o"), done: false, score: null }],
-    },
-  }));
+// Outcomes — the period running now
+const withOutcomes = (s: AppState, patch: Partial<AppState["outcomes"]>): AppState => ({
+  ...s,
+  outcomes: { ...s.outcomes, ...patch },
+});
+const mapCurrent = (s: AppState, id: string, change: (o: Outcome) => Outcome) =>
+  withOutcomes(s, { currentPeriod: s.outcomes.currentPeriod.map((o) => (o.id === id ? change(o) : o)) });
+
+/** A note against one outcome, saved word for word with the moment it was written. */
+export function addOutcomeNote(outcomeId: string, text: string) {
+  const note = { id: newId("n"), at: new Date().toISOString(), text };
+  update((s) => mapCurrent(s, outcomeId, (o) => ({ ...o, notes: [...o.notes, note] })));
 }
-export function updateOutcome(id: string, patch: Partial<Omit<Outcome, "id">>) {
-  update((s) => ({
-    ...s,
-    outcomes: {
-      ...s.outcomes,
-      currentPeriod: s.outcomes.currentPeriod.map((o) => (o.id === id ? { ...o, ...patch } : o)),
-    },
-  }));
+export function removeOutcomeNote(outcomeId: string, noteId: string) {
+  update((s) => mapCurrent(s, outcomeId, (o) => ({ ...o, notes: o.notes.filter((n) => n.id !== noteId) })));
 }
-export function removeOutcome(id: string) {
-  update((s) => ({
-    ...s,
-    outcomes: { ...s.outcomes, currentPeriod: s.outcomes.currentPeriod.filter((o) => o.id !== id) },
-  }));
-}
-export function toggleOutcomeDone(id: string) {
-  update((s) => ({
-    ...s,
-    outcomes: {
-      ...s.outcomes,
-      currentPeriod: s.outcomes.currentPeriod.map((o) => (o.id === id ? { ...o, done: !o.done } : o)),
-    },
-  }));
+/** The close, one outcome at a time: Done or Not done (and a Being outcome's score). */
+export function reviewOutcome(id: string, done: boolean, score?: number | null) {
+  update((s) => mapCurrent(s, id, (o) => ({ ...o, done, closed: true, score: score === undefined ? o.score : score })));
 }
 export function setOutcomeScore(id: string, score: number | null) {
-  updateOutcome(id, { score });
+  update((s) => mapCurrent(s, id, (o) => ({ ...o, score })));
 }
-export function setOutcomePriorities(orderedIds: string[]) {
-  update((s) => ({
-    ...s,
-    outcomes: {
-      ...s.outcomes,
-      currentPeriod: s.outcomes.currentPeriod.map((o) => {
-        const rank = orderedIds.indexOf(o.id);
-        return { ...o, priority: rank === -1 ? null : rank + 1 };
-      }),
-    },
-  }));
+
+/** Moves the reviewed period into Prior with its scores; the well-being scores go with it. */
+export function closePeriod(scores: { overall: number; priority: number; wellbeing: number }) {
+  update((s) => {
+    const p = s.outcomes.period;
+    if (!p) return s;
+    const past: PastPeriod = {
+      id: p.id,
+      label: `Period ${p.number}`,
+      start: p.start,
+      end: p.end,
+      ...scores,
+      outcomes: s.outcomes.currentPeriod,
+      lifeCodesEmerged: s.lifeCodes.filter((c) => c.periodId === p.id).map((c) => c.id),
+    };
+    const numbers = Object.fromEntries(
+      Object.entries(s.wellbeing.scores).filter((e): e is [string, number] => typeof e[1] === "number"),
+    );
+    return {
+      ...withOutcomes(s, { period: null, currentPeriod: [], pastPeriods: [past, ...s.outcomes.pastPeriods] }),
+      wellbeing: { scores: {}, submitted: false, pastScores: [{ periodId: p.id, scores: numbers }, ...s.wellbeing.pastScores] },
+    };
+  });
+}
+
+// Outcomes — building the next period
+const withDraft = (s: AppState, patch: Partial<AppState["outcomes"]["draft"]>) =>
+  withOutcomes(s, { draft: { ...s.outcomes.draft, ...patch } });
+
+export function setDraftEnd(end: string | null) {
+  update((s) => withDraft(s, { end }));
+}
+export function addDraftOutcome(input: { lifeArea: LifeAreaId; type: OutcomeType; text: string; goalId: string | null; track: boolean }) {
+  const outcome: Outcome = { ...input, id: newId("o"), priority: null, done: false, score: null, notes: [], closed: false };
+  update((s) => withDraft(s, { outcomes: [...s.outcomes.draft.outcomes, outcome] }));
+}
+export function removeDraftOutcome(id: string) {
+  update((s) => withDraft(s, { outcomes: s.outcomes.draft.outcomes.filter((o) => o.id !== id) }));
+}
+/** The order the client dragged them into; #1 first. */
+export function orderDraft(ids: string[]) {
+  update((s) => {
+    const byId = new Map(s.outcomes.draft.outcomes.map((o) => [o.id, o]));
+    return withDraft(s, { outcomes: ids.map((id) => byId.get(id)).filter((o): o is Outcome => !!o) });
+  });
+}
+/** "Yes, start my game": the draft becomes the period running now, in the order it was left. */
+export function startPeriod() {
+  update((s) => {
+    const { end, outcomes } = s.outcomes.draft;
+    if (!end || outcomes.length === 0) return s;
+    const number = s.outcomes.pastPeriods.length + (s.outcomes.period ? 2 : 1);
+    const period: Period = { id: newId("p"), number, start: toIsoDate(new Date()), end };
+    return withOutcomes(s, {
+      period,
+      currentPeriod: outcomes.map((o, i) => ({ ...o, priority: i + 1 })),
+      draft: { end: null, outcomes: [] },
+    });
+  });
+}
+/** "Yes, Cancel Game": the period being built is cleared and can't be brought back. */
+export function cancelDraft() {
+  update((s) => withDraft(s, { end: null, outcomes: [] }));
+}
+
+function toIsoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // Well-being
 export function setQualityScore(quality: string, score: number | null) {
   update((s) => ({ ...s, wellbeing: { ...s.wellbeing, scores: { ...s.wellbeing.scores, [quality]: score } } }));
 }
+export function submitWellbeing() {
+  update((s) => ({ ...s, wellbeing: { ...s.wellbeing, submitted: true } }));
+}
 
-// Life Codes
-export function addLifeCode(lifeCode: Omit<LifeCode, "id" | "status">) {
-  update((s) => ({ ...s, lifeCodes: [...s.lifeCodes, { ...lifeCode, id: newId("lc"), status: "active" }] }));
+// Life Codes — saved only once the client has written the statement and answered the questions.
+export type LifeCodeInput = Pick<LifeCode, "statement" | "lifeAreas" | "allLifeAreas" | "type" | "howOrWhenToUse">;
+
+export function addLifeCode(input: LifeCodeInput, source: LifeCodeSource, periodId: string | null = null) {
+  const id = newId("lc");
+  update((s) => ({ ...s, lifeCodes: [...s.lifeCodes, { ...input, id, addedThrough: source, periodId, status: "active" }] }));
+  return id;
 }
 export function updateLifeCode(id: string, patch: Partial<Omit<LifeCode, "id">>) {
   update((s) => ({ ...s, lifeCodes: s.lifeCodes.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
 }
-export function archiveLifeCode(id: string) {
-  updateLifeCode(id, { status: "archived" });
+/** Archive, never delete: the life code is kept and leaves the active list. */
+export function archiveLifeCode(id: string, reason: string) {
+  updateLifeCode(id, { status: "archived", archivedReason: reason });
 }
 export function restoreLifeCode(id: string) {
-  updateLifeCode(id, { status: "active" });
+  updateLifeCode(id, { status: "active", archivedReason: undefined });
+}
+
+/** Demo: Meera's period 7 running, three closed periods, her well-being history and life codes. */
+export function loadSampleEngine() {
+  update((s) => ({
+    ...s,
+    outcomes: { period: data.currentPeriod, currentPeriod: data.currentOutcomes, draft: { end: null, outcomes: [] }, pastPeriods: data.pastPeriods },
+    wellbeing: { scores: {}, submitted: false, pastScores: data.pastWellbeingScores },
+    lifeCodes: data.lifeCodes,
+  }));
+}
+export function clearEngine() {
+  update((s) => ({ ...s, outcomes: emptyOutcomes(), wellbeing: { scores: {}, submitted: false, pastScores: [] }, lifeCodes: [] }));
 }
 
 // Demo

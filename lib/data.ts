@@ -4,7 +4,7 @@
 // Field shapes follow the Figma screens:
 // - Life areas: CIF life-wheel card (name, one-line description, 1–10 rating) + focus tick
 // - Life stories: title + three keyword tags (story card) and Dinesh's three questions, in order
-// - Life codes: statement, life area, micro/macro, and the three "New Life Code" questions
+// - Life codes: statement, then the three questions: which life areas, micro or macro, how or when to use it
 // - Outcomes: Doing (done/undone) or Being (scored /10), life area, #1–3 priority, optional goal
 // - Values & qualities: strength + the quiz moments they came through (VQ results), plus a 1–10 score
 
@@ -129,16 +129,26 @@ export type Trait = {
   score: number; // 1–10
 };
 
+// A note against one outcome during its period: the moment plus the client's words, verbatim.
+// Notes stay inside their period and are never scored.
+export type OutcomeNote = { id: string; at: string; text: string }; // at = ISO date-time
+
 export type Outcome = {
   id: string;
   lifeArea: LifeAreaId;
   type: OutcomeType;
   text: string;
-  priority: number | null; // #1 matters most; null if not in the top three
+  priority: number | null; // #1 matters most; null while the period is still being built
   goalId: string | null; // mapped key result, or standalone
-  done: boolean; // Doing outcomes
+  track: boolean; // "Do I want to track this outcome?"
+  done: boolean; // said at the close: Done or Not done, nothing in between
   score: number | null; // Being outcomes, out of 10; null until scored
+  notes: OutcomeNote[];
+  closed: boolean; // reviewed in this period's close
 };
+
+// The period now running. "Ready to close" once its end date has passed.
+export type Period = { id: string; number: number; start: string; end: string }; // ISO dates
 
 export type PastPeriod = {
   id: string;
@@ -159,18 +169,22 @@ export type PastScores = {
 
 export type LifeCodeType = "micro" | "macro";
 
+// Where a life code was written: a fact about the write, recorded automatically.
+export type LifeCodeSource = "My Outcomes" | "My Well-Being" | "Session" | "My Vision" | "Added by hand" | "Chat";
+
+// The same shape everywhere (typed by hand, captured in the companion chat, or opened later):
+// the statement, then the three questions.
 export type LifeCode = {
   id: string;
-  statement: string;
-  lifeArea: LifeAreaId;
-  type: LifeCodeType;
-  answers: {
-    seeOrHear: string; // What would we see or hear?
-    whenUse: string; // When will you use it?
-    makeReal: string; // How will you make it real?
-  };
-  addedThrough: "My Outcomes" | "My Vision";
-  status: "active" | "archived";
+  statement: string; // "What would you tell your future self? Start with 'I'." In the client's words.
+  lifeAreas: LifeAreaId[]; // Question 1; all twelve when allLifeAreas is set
+  allLifeAreas: boolean; // Question 1's first option, "All life areas"
+  type: LifeCodeType; // Question 2: one situation (micro) or many situations (macro)
+  howOrWhenToUse: string; // Question 3
+  addedThrough: LifeCodeSource;
+  periodId: string | null; // the period it came out of, so it shows under that period in Prior
+  status: "active" | "archived"; // archive, never delete
+  archivedReason?: string;
 };
 
 // ---------- Client ----------
@@ -538,118 +552,104 @@ export const lifeCodes: LifeCode[] = [
   {
     id: "lc-1",
     statement: "Run before I open my inbox",
-    lifeArea: "health",
+    lifeAreas: ["health"],
+    allLifeAreas: false,
     type: "micro",
-    answers: {
-      seeOrHear: "Me out of the door by six, shoes on, phone left charging in the kitchen.",
-      whenUse: "Monday, Wednesday and Friday mornings.",
-      makeReal: "Running clothes laid out on the chair the night before, and the inbox app moved off my home screen.",
-    },
+    howOrWhenToUse: "Monday, Wednesday and Friday mornings.",
     addedThrough: "My Outcomes",
+    periodId: "p-5",
     status: "active",
   },
   {
     id: "lc-2",
     statement: "Close the laptop at seven and be home when I'm home",
-    lifeArea: "family",
+    lifeAreas: ["family"],
+    allLifeAreas: false,
     type: "macro",
-    answers: {
-      seeOrHear: "The laptop shut on the dining table, and me asking Tara about her day instead of saying 'one minute'.",
-      whenUse: "Every weekday evening.",
-      makeReal: "A seven o'clock alarm called 'Go home', and the team knows I reply to messages the next morning.",
-    },
+    howOrWhenToUse: "Every weekday evening.",
     addedThrough: "My Vision",
+    periodId: "p-4",
     status: "active",
   },
   {
     id: "lc-3",
     statement: "Ask one question before I give an answer",
-    lifeArea: "career",
+    lifeAreas: ["career"],
+    allLifeAreas: false,
     type: "micro",
-    answers: {
-      seeOrHear: "Me saying 'What do you think it needs?' before I touch someone's design.",
-      whenUse: "In every design review and whenever someone brings me a problem.",
-      makeReal: "A sticky note on my monitor that just says 'Ask first'.",
-    },
+    howOrWhenToUse: "In every design review and whenever someone brings me a problem.",
     addedThrough: "My Outcomes",
+    periodId: "p-5",
     status: "active",
   },
   {
     id: "lc-4",
     statement: "Pay myself first, on the first of every month",
-    lifeArea: "money",
+    lifeAreas: ["money"],
+    allLifeAreas: false,
     type: "macro",
-    answers: {
-      seeOrHear: "A transfer to my own account before any other payment leaves the studio.",
-      whenUse: "On the first of every month, no matter how the month looks.",
-      makeReal: "A standing instruction with the bank, so it happens even when I hesitate.",
-    },
+    howOrWhenToUse: "On the first of every month, no matter how the month looks.",
     addedThrough: "My Vision",
+    periodId: "p-6",
     status: "active",
   },
   {
     id: "lc-5",
     statement: "Say the hard thing kindly, and say it early",
-    lifeArea: "career",
+    lifeAreas: ["career"],
+    allLifeAreas: false,
     type: "macro",
-    answers: {
-      seeOrHear: "A short, honest conversation on Monday instead of a long, tired one on Friday.",
-      whenUse: "As soon as I notice I'm avoiding a conversation with a client or someone on the team.",
-      makeReal: "If I've thought about it twice, I put it on my calendar for the next day.",
-    },
+    howOrWhenToUse: "As soon as I notice I'm avoiding a conversation with a client or someone on the team.",
     addedThrough: "My Outcomes",
+    periodId: "p-6",
     status: "active",
   },
   {
     id: "lc-6",
     statement: "Put the phone in the drawer when Tara is talking",
-    lifeArea: "family",
+    lifeAreas: ["family"],
+    allLifeAreas: false,
     type: "micro",
-    answers: {
-      seeOrHear: "My phone face down in the hall drawer and me sitting on her bed.",
-      whenUse: "At bedtime, and whenever she starts with 'Amma, guess what'.",
-      makeReal: "The drawer is right by her door, so it is easier to use than to forget.",
-    },
+    howOrWhenToUse: "At bedtime, and whenever she starts with 'Amma, guess what'.",
     addedThrough: "My Outcomes",
+    periodId: "p-5",
     status: "active",
   },
   {
     id: "lc-7",
     statement: "One afternoon a month that has no purpose at all",
-    lifeArea: "fun",
+    lifeAreas: ["fun"],
+    allLifeAreas: false,
     type: "macro",
-    answers: {
-      seeOrHear: "Me with my watercolours at the lake, or wandering Blossom Book House with nowhere to be.",
-      whenUse: "The last Saturday afternoon of every month.",
-      makeReal: "Blocked on the family calendar so nobody books over it, including me.",
-    },
+    howOrWhenToUse: "The last Saturday afternoon of every month.",
     addedThrough: "My Vision",
+    periodId: "p-4",
     status: "active",
   },
   {
     id: "lc-8",
     statement: "Pause for one breath before I say yes",
-    lifeArea: "personal-development",
+    lifeAreas: ["personal-development"],
+    allLifeAreas: false,
     type: "micro",
-    answers: {
-      seeOrHear: "A small silence, then 'Let me check and come back to you by tomorrow.'",
-      whenUse: "Every time someone asks me to take something on.",
-      makeReal: "I keep that exact sentence saved in my notes so it is ready when I need it.",
-    },
+    howOrWhenToUse: "Every time someone asks me to take something on.",
     addedThrough: "My Outcomes",
+    periodId: null,
     status: "archived",
   },
 ];
 
 // ---------- Outcomes ----------
 
+export const currentPeriod: Period = { id: "p-7", number: 7, start: "2026-10-07", end: "2026-10-21" };
+
 export const currentOutcomes: Outcome[] = [
-  { id: "o-1", lifeArea: "health", type: "Doing", text: "Run three mornings a week before opening my inbox", priority: 1, goalId: "kr-1", done: true, score: null },
-  { id: "o-2", lifeArea: "money", type: "Doing", text: "Move my salary into my own account on the first", priority: 2, goalId: "kr-2", done: true, score: null },
-  { id: "o-3", lifeArea: "career", type: "Doing", text: "Hand the bakery review to Kavya and stay out of it", priority: 3, goalId: "kr-5", done: false, score: null },
-  { id: "o-4", lifeArea: "family", type: "Being", text: "Be fully present at dinner, phone in the drawer", priority: null, goalId: null, done: false, score: 7 },
-  { id: "o-5", lifeArea: "fun", type: "Being", text: "Feel unhurried on my Sunday sketch walk", priority: null, goalId: "kr-4", done: false, score: null },
-  { id: "o-6", lifeArea: "fun", type: "Doing", text: "Fill four pages of my sketchbook", priority: null, goalId: null, done: false, score: null },
+  { id: "o-1", lifeArea: "health", type: "Doing", text: "Run three mornings a week before opening my inbox", priority: 1, goalId: "kr-1", track: true, done: true, score: null, notes: [{ id: "n-1", at: "2026-10-12T07:40:00", text: "Running felt easier after laying the clothes out the night before." }], closed: false },
+  { id: "o-2", lifeArea: "money", type: "Doing", text: "Move my salary into my own account on the first", priority: 2, goalId: "kr-2", track: false, done: true, score: null, notes: [], closed: false },
+  { id: "o-3", lifeArea: "career", type: "Doing", text: "Hand the bakery review to Kavya and stay out of it", priority: 3, goalId: "kr-5", track: false, done: false, score: null, notes: [], closed: false },
+  { id: "o-4", lifeArea: "family", type: "Being", text: "Be fully present at dinner, phone in the drawer", priority: null, goalId: null, track: false, done: false, score: 7, notes: [], closed: false },
+  { id: "o-5", lifeArea: "fun", type: "Being", text: "Feel unhurried on my Sunday sketch walk", priority: null, goalId: "kr-4", track: false, done: false, score: null, notes: [], closed: false },
+  { id: "o-6", lifeArea: "fun", type: "Doing", text: "Fill four pages of my sketchbook", priority: null, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
 ];
 
 export const pastPeriods: PastPeriod[] = [
@@ -662,9 +662,9 @@ export const pastPeriods: PastPeriod[] = [
     priority: 100,
     wellbeing: 6.8,
     outcomes: [
-      { id: "p6-o1", lifeArea: "money", type: "Doing", text: "Set up the standing instruction for my salary", priority: 1, goalId: "kr-2", done: true, score: null },
-      { id: "p6-o2", lifeArea: "career", type: "Doing", text: "Write job descriptions for two team leads", priority: 2, goalId: "kr-5", done: true, score: null },
-      { id: "p6-o3", lifeArea: "health", type: "Doing", text: "Be in bed before midnight five nights a week", priority: null, goalId: null, done: false, score: null },
+      { id: "p6-o1", lifeArea: "money", type: "Doing", text: "Set up the standing instruction for my salary", priority: 1, goalId: "kr-2", track: false, done: true, score: null, notes: [], closed: false },
+      { id: "p6-o2", lifeArea: "career", type: "Doing", text: "Write job descriptions for two team leads", priority: 2, goalId: "kr-5", track: false, done: true, score: null, notes: [], closed: false },
+      { id: "p6-o3", lifeArea: "health", type: "Doing", text: "Be in bed before midnight five nights a week", priority: null, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-4", "lc-5"],
   },
@@ -677,9 +677,9 @@ export const pastPeriods: PastPeriod[] = [
     priority: 67,
     wellbeing: 8.0,
     outcomes: [
-      { id: "p5-o1", lifeArea: "health", type: "Doing", text: "Run twice a week, even if it is only twenty minutes", priority: 1, goalId: "kr-1", done: true, score: null },
-      { id: "p5-o2", lifeArea: "family", type: "Being", text: "Be patient with Amma when she rearranges my kitchen", priority: 2, goalId: null, done: false, score: 6 },
-      { id: "p5-o3", lifeArea: "career", type: "Doing", text: "Ask the team for their ideas before sharing mine", priority: 3, goalId: null, done: true, score: null },
+      { id: "p5-o1", lifeArea: "health", type: "Doing", text: "Run twice a week, even if it is only twenty minutes", priority: 1, goalId: "kr-1", track: false, done: true, score: null, notes: [], closed: false },
+      { id: "p5-o2", lifeArea: "family", type: "Being", text: "Be patient with Amma when she rearranges my kitchen", priority: 2, goalId: null, track: false, done: false, score: 6, notes: [], closed: false },
+      { id: "p5-o3", lifeArea: "career", type: "Doing", text: "Ask the team for their ideas before sharing mine", priority: 3, goalId: null, track: false, done: true, score: null, notes: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-1", "lc-3", "lc-6"],
   },
@@ -692,8 +692,8 @@ export const pastPeriods: PastPeriod[] = [
     priority: 50,
     wellbeing: 5.5,
     outcomes: [
-      { id: "p4-o1", lifeArea: "family", type: "Doing", text: "Close the laptop at seven on weekdays", priority: 1, goalId: null, done: false, score: null },
-      { id: "p4-o2", lifeArea: "fun", type: "Doing", text: "Spend one Saturday afternoon painting", priority: 2, goalId: "kr-4", done: true, score: null },
+      { id: "p4-o1", lifeArea: "family", type: "Doing", text: "Close the laptop at seven on weekdays", priority: 1, goalId: null, track: false, done: false, score: null, notes: [], closed: false },
+      { id: "p4-o2", lifeArea: "fun", type: "Doing", text: "Spend one Saturday afternoon painting", priority: 2, goalId: "kr-4", track: false, done: true, score: null, notes: [], closed: false },
     ],
     lifeCodesEmerged: ["lc-2", "lc-7"],
   },
