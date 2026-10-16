@@ -8,7 +8,7 @@ import HomeHeader from "@/components/home/HomeHeader";
 import ModuleLabel from "@/components/home/ModuleLabel";
 import { openCompanion } from "@/lib/companion";
 import { getModuleProgress, type ModuleId } from "@/lib/modules";
-import { useApp } from "@/lib/store";
+import { cifDone, useApp } from "@/lib/store";
 
 // Label positions on the 393 × 852 Figma Homepage frame.
 // Myself is pinned by its right edge (Figma: x 32, 47 wide) so the finished check
@@ -24,12 +24,14 @@ const modules: { id: ModuleId; label: string; position: React.CSSProperties }[] 
 export default function HomePage() {
   const router = useRouter();
   const state = useApp();
-  const [showPopup, setShowPopup] = useState(false);
+  const [showPopup, setShowPopup] = useState<"coach" | "cif" | null>(null);
 
   function open(id: ModuleId) {
+    // Everything but Myself (the CIF) stays locked until the CIF is submitted.
+    if (id !== "myself" && !cifDone(state)) return setShowPopup("cif");
     const { href } = getModuleProgress(state, id);
     if (href) router.push(href);
-    else setShowPopup(true);
+    else setShowPopup("coach");
   }
 
   return (
@@ -95,7 +97,7 @@ export default function HomePage() {
         <ModuleLabel label="My Companion" onClick={() => openCompanion("home")} />
       </div>
 
-      {showPopup && <CoachPopup onClose={() => setShowPopup(false)} />}
+      {showPopup && <CoachPopup cif={showPopup === "cif"} onClose={() => setShowPopup(null)} />}
     </main>
   );
 }

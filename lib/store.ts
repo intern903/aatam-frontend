@@ -69,7 +69,9 @@ export type AppState = {
     bodyFeel: string; // "I feel this most in my …"
   };
   // added: life areas the client added on the Visions screen, on top of their CIF focus areas.
-  visions: { byLifeArea: Partial<Record<LifeAreaId, Vision>>; added: LifeAreaId[] };
+  // areasFinal: the client has finalised which life areas they will write visions for; only then
+  // do the questions open, and the areas can no longer be changed.
+  visions: { byLifeArea: Partial<Record<LifeAreaId, Vision>>; added: LifeAreaId[]; removed: LifeAreaId[]; areasFinal: boolean };
   // Values & Qualities: written when the client confirms their discovery results.
   // selected = the confirmed list (ranked), final = their ids, added = the client's own additions.
   values: { selected: Trait[]; final: string[]; added: string[] };
@@ -99,9 +101,45 @@ export type AppState = {
 
 const STORAGE_KEY = "bridge-app";
 
+// Life stories and "where in your body" are captured by the coach in session, never by the
+// client. Until the coach interface exists, every client starts with the sample stories and
+// body word, and works from there (clusters, power words, statement).
 function emptyLifePurpose(): AppState["lifePurpose"] {
-  return { stories: [], powerWords: [], clusters: [], statement: "", status: "empty", drafts: [], makeItReal: [], bodyFeel: "" };
+  return {
+    stories: data.stories,
+    powerWords: [],
+    clusters: [],
+    statement: "",
+    status: "empty",
+    drafts: [],
+    makeItReal: [],
+    bodyFeel: data.purposeBodyFeel,
+  };
 }
+
+function emptyCif(): AppState["cif"] {
+  return {
+    answers: blankAnswers(),
+    lifeAreas: data.lifeAreas.map((a) => ({ ...a, score: null, focus: false })),
+    keyResults: data.keyResults,
+    agreementSigned: false,
+    progress: blankProgress(),
+    columns: null,
+  };
+}
+function sampleCif(): AppState["cif"] {
+  return {
+    answers: data.cifAnswers,
+    lifeAreas: data.lifeAreas,
+    keyResults: data.keyResults,
+    agreementSigned: true,
+    progress: data.cifProgress,
+    columns: toColumns({ answers: data.cifAnswers, lifeAreas: data.lifeAreas, progress: data.cifProgress }),
+  };
+}
+
+/** The CIF has been submitted: until then every other module stays locked. */
+export const cifDone = (s: AppState) => s.cif.progress.submittedAt !== null;
 
 function emptyOutcomes(): AppState["outcomes"] {
   return { period: null, currentPeriod: [], draft: { end: null, outcomes: [] }, pastPeriods: [] };
@@ -127,18 +165,13 @@ function sampleState(): AppState {
     // The sample client's account exists, but there is no session until she logs in
     // (lib/auth.ts issues the token). Any password works for this email.
     user: { ...data.sampleUser, token: "" },
-    cif: {
-      answers: data.cifAnswers,
-      lifeAreas: data.lifeAreas,
-      keyResults: data.keyResults,
-      agreementSigned: true,
-      progress: data.cifProgress,
-      columns: toColumns({ answers: data.cifAnswers, lifeAreas: data.lifeAreas, progress: data.cifProgress }),
-    },
+    // The CIF starts blank: every other module stays locked until the client submits it.
+    // (Meera's submitted form is a demo load in /_index.) Goals are set with the coach.
+    cif: emptyCif(),
     // Life Purpose starts empty: the client adds their own stories, clusters and statement.
     lifePurpose: emptyLifePurpose(),
     // Visions start empty too: the client writes their own (Meera's are a demo load in /_index).
-    visions: { byLifeArea: {}, added: [] },
+    visions: { byLifeArea: {}, added: [], removed: [], areasFinal: false },
     // Values & Qualities start empty: the client finds their own (Meera's are a demo load in /_index).
     values: { selected: [], final: [], added: [] },
     qualities: { selected: [], final: [], added: [] },
@@ -164,6 +197,8 @@ function read(): AppState | null {
     if (saved.cif && (!saved.cif.progress || saved.cif.lifeAreas?.length !== AREAS.length)) {
       saved.cif = sample.cif;
     }
+    // Meera's sample CIF, still untouched (submitted at the sample's own moment), is cleared.
+    if (saved.cif?.progress?.submittedAt === data.cifProgress.submittedAt) saved.cif = emptyCif();
     // Life Purpose fields added later get empty defaults.
     if (saved.lifePurpose) {
       const lp = saved.lifePurpose as Partial<AppState["lifePurpose"]>;
@@ -172,11 +207,22 @@ function read(): AppState | null {
       if (lp.statement === data.lifePurposeStatement && lp.stories?.[0]?.id === "story-1") {
         saved.lifePurpose = emptyLifePurpose();
       }
+      // No stories yet: the coach's (for now, sample) stories and body word fill in.
+      if (!saved.lifePurpose.stories?.length) {
+        saved.lifePurpose = { ...saved.lifePurpose, stories: data.stories, bodyFeel: saved.lifePurpose.bodyFeel || data.purposeBodyFeel };
+      }
     }
     // Visions: the "added" list came later; Meera's sample visions, still untouched, are cleared.
     if (saved.visions) {
       const untouched = JSON.stringify(saved.visions.byLifeArea) === JSON.stringify(sampleVisions());
-      saved.visions = { byLifeArea: untouched ? {} : saved.visions.byLifeArea ?? {}, added: saved.visions.added ?? [] };
+      const byLifeArea = untouched ? {} : saved.visions.byLifeArea ?? {};
+      saved.visions = {
+        byLifeArea,
+        added: saved.visions.added ?? [],
+        removed: saved.visions.removed ?? [],
+        // Saved before the areas step existed: finalised if any vision was already started.
+        areasFinal: saved.visions.areasFinal ?? Object.keys(byLifeArea).length > 0,
+      };
     }
     // Values & Qualities: "added" came later; Meera's sample lists, still untouched, are cleared.
     for (const key of ["values", "qualities"] as const) {
@@ -494,14 +540,35 @@ function sampleVisions() {
   return Object.fromEntries(data.visions.map((v) => [v.lifeArea, v])) as Partial<Record<LifeAreaId, Vision>>;
 }
 export function loadSampleVisions() {
-  update((s) => ({ ...s, visions: { ...s.visions, byLifeArea: sampleVisions() } }));
+  update((s) => ({ ...s, visions: { ...s.visions, byLifeArea: sampleVisions(), areasFinal: true } }));
 }
 export function clearVisions() {
-  update((s) => ({ ...s, visions: { byLifeArea: {}, added: [] } }));
+  update((s) => ({ ...s, visions: { byLifeArea: {}, added: [], removed: [], areasFinal: false } }));
+}
+/** Takes an area off the list while the areas are still being chosen. */
+export function removeVisionArea(lifeArea: LifeAreaId) {
+  update((s) =>
+    s.visions.areasFinal
+      ? s
+      : {
+          ...s,
+          visions: {
+            ...s.visions,
+            added: s.visions.added.filter((a) => a !== lifeArea),
+            removed: s.visions.removed.includes(lifeArea) ? s.visions.removed : [...s.visions.removed, lifeArea],
+          },
+        },
+  );
+}
+/** "Finalise My Life Areas": the questions open, and the areas are fixed from here. */
+export function finalizeVisionAreas() {
+  update((s) => ({ ...s, visions: { ...s.visions, areasFinal: true } }));
 }
 export function addVisionArea(lifeArea: LifeAreaId) {
   update((s) =>
-    s.visions.added.includes(lifeArea) ? s : { ...s, visions: { ...s.visions, added: [...s.visions.added, lifeArea] } },
+    s.visions.areasFinal || s.visions.added.includes(lifeArea)
+      ? s
+      : { ...s, visions: { ...s.visions, added: [...s.visions.added, lifeArea], removed: s.visions.removed.filter((a) => a !== lifeArea) } },
   );
 }
 export function setVision(lifeArea: LifeAreaId, patch: Partial<Omit<Vision, "lifeArea">>) {
@@ -704,6 +771,14 @@ export function archiveLifeCode(id: string, reason: string) {
 }
 export function restoreLifeCode(id: string) {
   updateLifeCode(id, { status: "active", archivedReason: undefined });
+}
+
+/** Demo: Meera's submitted CIF, which unlocks the other modules. */
+export function loadSampleCif() {
+  update((s) => ({ ...s, cif: sampleCif() }));
+}
+export function clearCif() {
+  update((s) => ({ ...s, cif: emptyCif() }));
 }
 
 /** Demo: Meera's period 7 running, three closed periods, her well-being history and life codes. */

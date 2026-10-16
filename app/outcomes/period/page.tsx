@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import PopUpSheet from "@/components/PopUpSheet";
 import OutcomeCard, { CornerButton } from "@/components/engine/OutcomeCard";
-import { DotTags, EngineFrame, Ring, SectionHead } from "@/components/engine/ui";
+import { DayBar, TickButton } from "@/components/engine/Tracking";
+import { DotTags, EngineFrame, Ring, SectionHead, useTabSwipe } from "@/components/engine/ui";
 import { PrimaryButton } from "@/components/life-purpose/ui";
 import { useHydrated } from "@/components/values/ui";
 import type { Outcome, OutcomeNote } from "@/lib/data";
@@ -18,6 +19,8 @@ import { addOutcomeNote, useApp } from "@/lib/store";
 // The plus beside the heading starts building the next period (muted while one is running);
 // the clock opens Prior periods and the trend.
 // A period past its end shows "Ready to close": neutral, never red or overdue.
+// An outcome the client tracks also shows today's tick top-right (Figma's check circle) and,
+// on the back of its card, the day-by-day bar. "‹ Today" (or a swipe right) goes to Today.
 
 export default function PeriodPage() {
   const hydrated = useHydrated();
@@ -27,12 +30,14 @@ export default function PeriodPage() {
   const list = byPriority(outcomes.currentPeriod);
   const days = period ? periodDays(period) : null;
   const ready = days !== null && days.left <= 0;
+  const swipe = useTabSwipe({ right: "/outcomes/today" });
   const notes = list
     .flatMap((o) => o.notes.map((n) => ({ ...n, outcome: o.text })))
     .sort((a, b) => b.at.localeCompare(a.at));
 
   return (
     <EngineFrame
+      swipe={swipe}
       top={
         // Figma "RG - Game": the "‹ Today" pill back to the Today tab.
         <div className="flex pt-[82px]">
@@ -97,11 +102,22 @@ export default function PeriodPage() {
                   outcome={o}
                   rank={o.priority ?? i + 1}
                   corner={
-                    <CornerButton label={`Add a note to “${o.text}”`} onClick={() => setNoteFor(o)}>
-                      <Image src="/icons/plus-small.svg" alt="" width={16} height={16} />
-                    </CornerButton>
+                    <>
+                      <CornerButton label={`Add a note to “${o.text}”`} onClick={() => setNoteFor(o)}>
+                        <Image src="/icons/plus-small.svg" alt="" width={16} height={16} />
+                      </CornerButton>
+                      {o.track && o.type === "Doing" && <TickButton outcome={o} />}
+                    </>
                   }
-                  status={o.notes.length > 0 ? <span className="text-caption text-black">{o.notes.length} note{o.notes.length === 1 ? "" : "s"}</span> : undefined}
+                  status={
+                    o.track || o.notes.length > 0 ? (
+                      <span className="flex w-full flex-col gap-8">
+                        {o.track && o.type === "Doing" && <DayBar outcome={o} period={period} />}
+                        {o.track && o.type === "Being" && <span className="text-caption text-black">Today: {o.score === null ? "--" : `${o.score}/10`}</span>}
+                        {o.notes.length > 0 && <span className="text-caption text-black">{o.notes.length} note{o.notes.length === 1 ? "" : "s"}</span>}
+                      </span>
+                    ) : undefined
+                  }
                 />
               ))}
             </div>

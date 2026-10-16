@@ -66,7 +66,7 @@ export function visionCheckState(
 /** The client's picked life areas: their CIF focus areas, any they added here, and any with a vision. */
 export function pickedAreas(state: AppState) {
   const ids = new Set<LifeAreaId>([
-    ...state.cif.lifeAreas.filter((a) => a.focus).map((a) => a.id),
+    ...state.cif.lifeAreas.filter((a) => a.focus && !state.visions.removed.includes(a.id)).map((a) => a.id),
     ...state.visions.added,
     ...(Object.keys(state.visions.byLifeArea) as LifeAreaId[]),
   ]);

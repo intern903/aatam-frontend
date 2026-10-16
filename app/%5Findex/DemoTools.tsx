@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  clearCif,
   clearEngine,
   clearLifePurpose,
   clearValues,
   clearVisions,
+  loadSampleCif,
   loadSampleEngine,
   loadSampleLifePurpose,
   loadSampleValues,
@@ -15,9 +17,20 @@ import {
 // Internal demo controls (not part of the product): Life Purpose starts empty for real
 // clients, so these load Meera's sample to preview the draft and final screens. Visions too.
 export default function DemoTools() {
-  const { lifePurpose, visions, values, outcomes, lifeCodes } = useApp();
+  const { lifePurpose, visions, values, outcomes, lifeCodes, cif } = useApp();
   return (
     <section>
+      <h2>CIF demo data</h2>
+      <p>Now: {cif.progress.submittedAt ? "submitted (other modules open)" : "not submitted (other modules locked)"}</p>
+      <p>
+        <button type="button" className="underline" onClick={loadSampleCif}>
+          Load Meera&apos;s submitted CIF
+        </button>
+        {" · "}
+        <button type="button" className="underline" onClick={clearCif}>
+          Clear the CIF
+        </button>
+      </p>
       <h2>Life Purpose demo data</h2>
       <p>Now: {lifePurpose.status} · {lifePurpose.stories.length} stories</p>
       <p>

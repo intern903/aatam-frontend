@@ -9,7 +9,6 @@ import { updateUser, useApp } from "@/lib/store";
 
 // Figma "Settings - personal details". Header (back → /settings) comes from the shell.
 const COUNTRY_CODE = "+91";
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function PersonalDetailsPage() {
   const router = useRouter();
@@ -18,17 +17,15 @@ export default function PersonalDetailsPage() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone?.number ?? "");
   // Photo is held in memory only (see lib/media.ts); it isn't saved across reloads.
   const [photo, setPhoto] = useState<string | null>(media.photo);
 
   const changed =
     name !== (user?.name ?? "") ||
-    email !== (user?.email ?? "") ||
     phone !== (user?.phone?.number ?? "") ||
     photo !== media.photo;
-  const valid = name.trim() !== "" && EMAIL.test(email.trim());
+  const valid = name.trim() !== "";
 
   function choosePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -53,7 +50,6 @@ export default function PersonalDetailsPage() {
     if (!changed || !valid) return;
     updateUser({
       name: name.trim(),
-      email: email.trim(),
       phone: phone.trim() ? { code: COUNTRY_CODE, number: phone.trim() } : undefined,
     });
     setProfilePhoto(photo);
@@ -87,8 +83,11 @@ export default function PersonalDetailsPage() {
             type="email"
             name="email"
             autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            // The email is the account's sign-in, so it can't be changed here.
+            value={user?.email ?? ""}
+            readOnly
+            aria-readonly
+            className={`${fieldInputClass} cursor-not-allowed text-ink-50`}
           />
           <label className="flex w-full flex-col gap-4">
             <FieldLabel label="Phone" />

@@ -4,11 +4,11 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import ChatPanel from "@/components/ChatPanel";
 import { closeCompanion, useCompanion } from "@/lib/companion";
+import CifGate from "./CifGate";
 import { INDEX_PATH } from "@/lib/screens";
 import AppHeader from "./AppHeader";
 import AuthGuard from "./AuthGuard";
 import BottomNav from "./BottomNav";
-import IndexButton from "./IndexButton";
 import { getShellConfig } from "./shell-config";
 
 // Holds every screen at the 393px design width, centred on wider viewports.
@@ -35,10 +35,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <AppHeader {...header} />
           </div>
         )}
-        {children}
+        <CifGate>{children}</CifGate>
         {nav && <BottomNav active={nav.active} />}
         <ChatPanel moduleKey={companion.moduleKey} open={companion.open} firstMessage={companion.firstMessage} onClose={closeCompanion} />
-        <IndexButton />
       </div>
     </AuthGuard>
   );

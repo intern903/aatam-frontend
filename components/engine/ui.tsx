@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import PopUpSheet from "@/components/PopUpSheet";
+import { StatementGlass } from "@/components/life-purpose/ui";
+import { LifeAreaCard } from "@/components/settings/LifeAreaImage";
 import { lifeAreas, type LifeAreaId } from "@/lib/data";
 import { useApp } from "@/lib/store";
 import { areaColour, areaName } from "@/lib/visions";
@@ -13,20 +16,24 @@ import { areaColour, areaName } from "@/lib/visions";
 
 /**
  * "My Life Purpose" (Yellow/100, star) and "My Goals" (Primary/100, target): the two fixed
- * buttons at y 134 on every Engine screen. Life Purpose opens its final screen; My Goals lists
- * the client's goals (their CIF key results).
+ * buttons on every Engine screen. Both open as pop-ups over the screen (Figma "RG - Life Purpose"
+ * and "RG - My Goals"), so the client never leaves the Engine to look at them.
  */
 export function PurposeGoals() {
-  const [goals, setGoals] = useState(false);
+  const [open, setOpen] = useState<"purpose" | "goals" | null>(null);
   return (
     <div className="flex w-full items-stretch gap-12">
-      <Link href="/life-purpose/final" className="relative flex flex-1 flex-col overflow-hidden rounded-24 bg-yellow-100 px-16 py-12">
-        <Image src="/icons/star-yellow.svg" alt="" width={80} height={80} className="absolute left-[103px] top-1/2 -translate-y-1/2" />
-        <span className="relative font-heading text-h4 text-ink-80">My Life Purpose</span>
-      </Link>
       <button
         type="button"
-        onClick={() => setGoals(true)}
+        onClick={() => setOpen("purpose")}
+        className="relative flex flex-1 flex-col overflow-hidden rounded-24 bg-yellow-100 px-16 py-12 text-left"
+      >
+        <Image src="/icons/star-yellow.svg" alt="" width={80} height={80} className="absolute left-[103px] top-1/2 -translate-y-1/2" />
+        <span className="relative font-heading text-h4 text-ink-80">My Life Purpose</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen("goals")}
         className="relative flex flex-1 flex-col justify-center overflow-hidden rounded-24 bg-primary-100 px-16 py-12 text-left"
       >
         <Image src="/icons/target.svg" alt="" width={80} height={80} className="absolute left-[103px] top-1/2 -translate-y-1/2" />
@@ -36,13 +43,130 @@ export function PurposeGoals() {
           Goals
         </span>
       </button>
-      {goals && <GoalsSheet onClose={() => setGoals(false)} />}
+      {open === "purpose" && <PurposePopup onClose={() => setOpen(null)} />}
+      {open === "goals" && <MyGoalsPopup onClose={() => setOpen(null)} />}
     </div>
   );
 }
 
-/** Figma "RG - My Goals" / "Map to a goal": the client's goals, each a white pill with its area. */
-export function GoalsSheet({ onClose, onPick, title = "My Goals" }: { onClose: () => void; onPick?: (id: string) => void; title?: string }) {
+/** Scrim + centred card, closed by the scrim, the X or Escape. */
+function Overlay({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/25" />
+      <div role="dialog" aria-modal="true" aria-label={label} className="relative">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Figma "RG - Life Purpose": the statement on the sky photo, 329 × 330, with a white X. */
+function PurposePopup({ onClose }: { onClose: () => void }) {
+  const { lifePurpose: lp } = useApp();
+  const final = lp.status === "final";
+  return (
+    <Overlay label="My Life Purpose" onClose={onClose}>
+      <div className="relative h-purpose-card w-content overflow-hidden rounded-24 shadow-image">
+        <Image src="/images/life-purpose/purpose-sky.png" alt="" fill sizes="329px" className="object-cover object-[50%_20%]" />
+        <div className="absolute inset-x-16 top-16 flex items-start justify-between gap-8">
+          <div>
+            <h2 className="font-heading text-h1 text-white">My Life Purpose</h2>
+            <p className="mt-4 text-caption text-white">The thread through every moment when I’m most alive</p>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose} className="mt-4 flex size-icon shrink-0 items-center justify-center rounded-pill">
+            <Image src="/icons/x-white.svg" alt="" width={20} height={20} />
+          </button>
+        </div>
+        <div className="absolute inset-x-16 bottom-16">
+          {final ? (
+            <StatementGlass statement={lp.statement} powerWords={lp.clusters.map((c) => c.name)} />
+          ) : (
+            <div className="rounded-12 bg-white/10 p-16 backdrop-blur-[2px]">
+              <p className="text-body text-white">Your life purpose will appear here once it feels true.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+/**
+ * Figma "RG - My Goals": a 329px Background/500 card, "My Goals" with the target and an X, then
+ * one life-area card per area that has goals. Tap a card to turn it over to that area's goals.
+ */
+function MyGoalsPopup({ onClose }: { onClose: () => void }) {
+  const { cif } = useApp();
+  const areas = lifeAreas.filter((a) => cif.keyResults.some((g) => g.lifeArea === a.id));
+  return (
+    <Overlay label="My Goals" onClose={onClose}>
+      <div className="flex max-h-[80vh] w-content flex-col overflow-hidden rounded-12 bg-background">
+        <div className="flex flex-col gap-8 px-16 pt-16">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-8">
+              <Image src="/icons/target-24.svg" alt="" width={24} height={24} />
+              <h2 className="font-heading text-h3 text-black">My Goals</h2>
+            </span>
+            <button type="button" aria-label="Close" onClick={onClose} className="flex size-icon items-center justify-center rounded-pill">
+              <Image src="/icons/x.svg" alt="" width={20} height={20} />
+            </button>
+          </div>
+          <span className="border-t border-black" />
+        </div>
+        <div className="flex flex-col gap-12 overflow-y-auto px-16 pb-16 pt-12">
+          {areas.length === 0 ? (
+            <p className="text-body-small text-ink-60">Your goals will show here once you and Dinesh have set them.</p>
+          ) : (
+            areas.map((a) => (
+              <GoalCard key={a.id} id={a.id} name={a.name} goals={cif.keyResults.filter((g) => g.lifeArea === a.id).map((g) => g.text)} />
+            ))
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+function GoalCard({ id, name, goals }: { id: LifeAreaId; name: string; goals: string[] }) {
+  const [flipped, setFlipped] = useState(false);
+  return (
+    <div className="h-area-card w-full shrink-0 [perspective:1000px]">
+      <div
+        className="relative size-full transition-transform duration-500 [transform-style:preserve-3d]"
+        style={{ transform: flipped ? "rotateY(180deg)" : undefined }}
+      >
+        <div className="absolute inset-0 [backface-visibility:hidden]">
+          <LifeAreaCard id={id} name={name} variant="vision" onOpen={() => setFlipped(true)} onArrow={() => setFlipped(true)} />
+        </div>
+        <div className="absolute inset-0 flex flex-col gap-8 overflow-y-auto rounded-24 bg-white p-16 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-body text-black">{name}</span>
+              <button type="button" aria-label="Turn over" onClick={() => setFlipped(false)} className="flex size-icon items-center justify-center">
+                <Image src="/icons/x.svg" alt="" width={20} height={20} />
+              </button>
+            </div>
+            <span className="border-t border-black" />
+          </div>
+          <ul className="flex list-disc flex-col gap-4 pl-20 text-body-small text-ink-brown">
+            {goals.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Figma "Map to a goal": the client's goals, each a white pill with its area, to pick one. */
+export function GoalsSheet({ onClose, onPick, title = "Map to a goal" }: { onClose: () => void; onPick: (id: string) => void; title?: string }) {
   const { cif } = useApp();
   return (
     <PopUpSheet title={title} onClose={onClose} variant="bottom">
@@ -50,25 +174,18 @@ export function GoalsSheet({ onClose, onPick, title = "My Goals" }: { onClose: (
         <p className="text-body-small text-ink-60">Your goals will show here once you and Dinesh have set them.</p>
       ) : (
         <div className="flex flex-col gap-8">
-          {cif.keyResults.map((g) => {
-            const row = (
-              <>
-                <span className={`size-8 shrink-0 rounded-4 ${areaColour(g.lifeArea).solid}`} />
-                <span className="flex-1 text-body-small text-black">{g.text}</span>
-                <span className="text-caption text-black">{areaName(g.lifeArea)}</span>
-              </>
-            );
-            const cls = "flex w-full items-center gap-8 rounded-pill border-hairline border-background-600 bg-white px-12 py-8 text-left";
-            return onPick ? (
-              <button key={g.id} type="button" onClick={() => onPick(g.id)} className={cls}>
-                {row}
-              </button>
-            ) : (
-              <div key={g.id} className={cls}>
-                {row}
-              </div>
-            );
-          })}
+          {cif.keyResults.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => onPick(g.id)}
+              className="flex w-full items-center gap-8 rounded-pill border-hairline border-background-600 bg-white px-12 py-8 text-left"
+            >
+              <span className={`size-8 shrink-0 rounded-4 ${areaColour(g.lifeArea).solid}`} />
+              <span className="flex-1 text-body-small text-black">{g.text}</span>
+              <span className="text-caption text-black">{areaName(g.lifeArea)}</span>
+            </button>
+          ))}
         </div>
       )}
     </PopUpSheet>
@@ -105,12 +222,14 @@ export function EngineTop({ backHref, onBack, search }: { backHref?: string; onB
 export function EngineFrame({
   top,
   children,
+  swipe,
 }: {
   top: React.ReactNode;
   children: React.ReactNode;
+  swipe?: ReturnType<typeof useTabSwipe>;
 }) {
   return (
-    <main className="flex flex-col px-32 pb-40">
+    <main {...swipe} className="flex touch-pan-y flex-col px-32 pb-40">
       {top}
       <div className="mt-24">
         <PurposeGoals />
@@ -118,6 +237,29 @@ export function EngineFrame({
       <div className="mt-20 flex flex-col gap-20">{children}</div>
     </main>
   );
+}
+
+/**
+ * Today and Current period are the Engine's two tabs: a horizontal swipe moves between them
+ * (touch only, so it never fights typing). The pills on each screen do the same by tap.
+ */
+export function useTabSwipe({ left, right }: { left?: string; right?: string }) {
+  const router = useRouter();
+  const start = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (!start.current) return;
+      const dx = e.changedTouches[0].clientX - start.current.x;
+      const dy = e.changedTouches[0].clientY - start.current.y;
+      start.current = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx < 0 && left) router.push(left);
+      if (dx > 0 && right) router.push(right);
+    },
+  };
 }
 
 /** H3 heading with an optional control on the right (count pill, plus/clock, filter…). */

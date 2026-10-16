@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { DotTags, OutOfTen, PurposeGoals, ScoreBoxes, SectionHead } from "@/components/engine/ui";
+import LifeCodeCard from "@/components/engine/LifeCodeCard";
+import { DayBar, TickButton } from "@/components/engine/Tracking";
+import { DotTags, OutOfTen, PurposeGoals, ScoreBoxes, SectionHead, useTabSwipe } from "@/components/engine/ui";
 import { PrimaryButton } from "@/components/life-purpose/ui";
 import { useHydrated } from "@/components/values/ui";
 import type { Outcome, Period } from "@/lib/data";
-import { openCompanion } from "@/lib/companion";
-import { addDays, byPriority, dateOf, isoDate, periodDays, today } from "@/lib/outcomes";
-import { setOutcomeScore, toggleTick, useApp } from "@/lib/store";
+import { byPriority, periodDays } from "@/lib/outcomes";
+import { setOutcomeScore, useApp } from "@/lib/store";
 import { areaColour, areaName } from "@/lib/visions";
 
 // Figma "RG - Today": the tab My Journey opens on. "My Game · N days left" leads to the current
@@ -16,17 +17,20 @@ import { areaColour, areaName } from "@/lib/visions";
 // chose to track. A Doing outcome is ticked once a day, and its bar has one part per day of the
 // period, filled for the days ticked (never marked against the others). A Being outcome is
 // scored out of 10. Ticking one opens the companion with "I just completed: …".
+// Under the My Life Codes banner, five of the client's life codes and "See all" (Engine flow 0A.1).
+// "My Game ›" (or a swipe left) goes to the current period.
 
 export default function TodayPage() {
   const hydrated = useHydrated();
-  const { outcomes } = useApp();
+  const { outcomes, lifeCodes } = useApp();
+  const swipe = useTabSwipe({ left: "/outcomes/period" });
+  const codes = lifeCodes.filter((c) => c.status === "active");
   const period = outcomes.period;
   const days = period ? periodDays(period) : null;
   const tracked = byPriority(outcomes.currentPeriod).filter((o) => o.track);
-  const todayIso = isoDate(today());
 
   return (
-    <main className="flex flex-col gap-20 px-32 pb-40">
+    <main {...swipe} className="flex touch-pan-y flex-col gap-20 px-32 pb-40">
       <div className="flex justify-end pt-[82px]">
         <Link href="/outcomes/period" className="flex items-center gap-4 rounded-24 bg-white px-16 py-8 text-body-medium text-black">
           My Game
@@ -49,6 +53,23 @@ export default function TodayPage() {
         <Image src="/icons/chevron-right-24.svg" alt="" width={24} height={24} className="relative" />
       </Link>
 
+      {hydrated && (
+        <div className="-mt-8 flex flex-col gap-8">
+          {codes.length === 0 ? (
+            <p className="text-body-small text-ink-60">Your life codes build up as you go, and the first ones will show here.</p>
+          ) : (
+            <>
+              {codes.slice(0, 5).map((c) => (
+                <LifeCodeCard key={c.id} code={c} href={`/life-code/${c.id}`} compact />
+              ))}
+              <Link href="/life-code" className="self-end text-caption text-primary-600 underline">
+                See all {codes.length} life codes
+              </Link>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col gap-16">
         <SectionHead title="My Today’s Outcomes Tracking" />
         {!hydrated ? null : !period ? (
@@ -64,7 +85,7 @@ export default function TodayPage() {
           <div className="flex flex-col gap-8">
             {tracked.map((o) =>
               o.type === "Doing" ? (
-                <DoingRow key={o.id} outcome={o} period={period} today={todayIso} />
+                <DoingRow key={o.id} outcome={o} period={period} />
               ) : (
                 <BeingRow key={o.id} outcome={o} />
               ),
@@ -91,37 +112,11 @@ function Head({ outcome, right }: { outcome: Outcome; right: React.ReactNode }) 
   );
 }
 
-function DoingRow({ outcome, period, today: todayIso }: { outcome: Outcome; period: Period; today: string }) {
-  const { solid, soft } = areaColour(outcome.lifeArea);
-  const ticked = outcome.ticks.includes(todayIso);
-  const total = periodDays(period).total;
-  const start = dateOf(period.start);
+function DoingRow({ outcome, period }: { outcome: Outcome; period: Period }) {
   return (
     <section className="flex flex-col gap-8 rounded-24 bg-white px-16 py-12">
-      <Head
-        outcome={outcome}
-        right={
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={ticked}
-            aria-label={`Done today: ${outcome.text}`}
-            onClick={() => {
-              toggleTick(outcome.id, todayIso);
-              // A tick leads straight into the conversation about it.
-              if (!ticked) openCompanion("outcomes", `I just completed: ${outcome.text}`);
-            }}
-            className={`flex h-[32px] w-[33px] shrink-0 items-center justify-center rounded-pill border p-4 ${ticked ? solid : "bg-white"} ${solid.replace("bg-", "border-")}`}
-          >
-            <Image src="/icons/check-circle-white.svg" alt="" width={24} height={24} />
-          </button>
-        }
-      />
-      <div className="flex w-full gap-2" aria-label={`${outcome.ticks.length} of ${total} days ticked`}>
-        {Array.from({ length: total }, (_, i) => (
-          <span key={i} className={`h-4 flex-1 rounded-4 ${outcome.ticks.includes(isoDate(addDays(start, i))) ? solid : soft}`} />
-        ))}
-      </div>
+      <Head outcome={outcome} right={<TickButton outcome={outcome} />} />
+      <DayBar outcome={outcome} period={period} />
     </section>
   );
 }

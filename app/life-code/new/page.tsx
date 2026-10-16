@@ -9,7 +9,7 @@ import { addLifeCode, updateLifeCode, useApp } from "@/lib/store";
 
 // Figma "RG - Guide" (New Life Code / Edit Life Code): the five-step flow in components/life-code.
 //   /life-code/new                      added by hand
-//   /life-code/new?edit=<id>            edit one (same steps, filled in)
+//   /life-code/new?edit=<id>            edit one (all fields on one screen, filled in)
 //   /life-code/new?source=My%20Outcomes&period=<id>&return=<path>
 //                                       from the close of a period: tagged with that source and
 //                                       period, then back to where the client was.
@@ -40,6 +40,7 @@ function NewLifeCode() {
       key={editing?.id ?? "new"}
       title={editing ? "Edit Life Code" : "New Life Code"}
       initial={editing}
+      edit={!!editing}
       onCancel={() => router.push(back ?? (editing ? `/life-code/${editing.id}` : "/life-code"))}
       onSave={(input) => {
         if (editing) {

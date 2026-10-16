@@ -1,8 +1,9 @@
 "use client";
 
 import { notFound, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import QuestionScreen from "@/components/QuestionScreen";
+import { useHydrated } from "@/components/values/ui";
 import { PrimaryButton } from "@/components/life-purpose/ui";
 import type { LifeAreaId } from "@/lib/data";
 import { setVision, useApp } from "@/lib/store";
@@ -23,7 +24,15 @@ export default function QuestionsPage({ params }: { params: { area: string } }) 
 }
 
 function Questions({ area }: { area: LifeAreaId }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const final = useApp().visions.areasFinal;
   const q = Math.min(4, Math.max(1, Number(useSearchParams().get("q")) || 1));
+  // The questions open only once the life areas are finalised.
+  useEffect(() => {
+    if (hydrated && !final) router.replace("/visions");
+  }, [hydrated, final, router]);
+  if (!hydrated || !final) return null;
   return <Question key={q} area={area} q={q} />;
 }
 

@@ -132,6 +132,15 @@ function VisionBack({ id, vision, onClose }: { id: LifeAreaId; vision: Vision; o
         </button>
       </div>
       <p className="text-body text-black">{vision.statement}</p>
+      {/* "Go Deeper": the line written for each power word, under the statement. */}
+      {Object.entries(vision.byPowerWord)
+        .filter(([, line]) => line.trim())
+        .map(([word, line]) => (
+          <div key={word} className="flex flex-col gap-4 border-t-hairline border-background-600 pt-8">
+            <span className="text-caption text-ink-60">{word}</span>
+            <p className="text-body-small text-black">{line}</p>
+          </div>
+        ))}
     </div>
   );
 }

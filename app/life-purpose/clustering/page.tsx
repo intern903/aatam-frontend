@@ -14,7 +14,7 @@ import { setClusters, useApp } from "@/lib/store";
 // the current cluster (it fills with the cluster's colour, grows, and a thread joins it to the
 // cluster's other words). Words already in another cluster leave the pool. Two buttons, per the
 // Life Purpose flow: "Next" finishes this cluster and starts another; "Wrap up" stays muted until
-// every word is in a cluster. The client groups the words; the app never groups them itself.
+// every word is in a cluster, then takes Next's place. The client groups the words; the app never groups them itself.
 // Landscape shows on a phone held sideways, or with ?landscape=1 for testing on desktop.
 // ?cluster=N opens on cluster N.
 
@@ -164,27 +164,29 @@ function Clustering() {
     ) : null,
   );
 
-  // "Next" is the highlighted button until every word is clustered; then "Wrap up" takes over.
+  // While clusters are being made: "Next" starts the next cluster and "Wrap up" is disabled.
+  // Once the last word is in a cluster, "Wrap up" takes Next's place.
   const actions = (vertical: boolean) => (
     <div className={`flex gap-8 ${vertical ? "flex-col items-stretch" : "items-center"}`}>
-      <button
-        type="button"
-        disabled={currentWords.length === 0 || allClustered}
-        onClick={() => setCurrent(working.length)}
-        className={`rounded-8 px-16 py-8 text-button-cta ${
-          allClustered ? "bg-cancel text-cancel-text" : "bg-primary-600 text-white"
-        } disabled:opacity-50`}
-      >
-        Next
-      </button>
-      <button
-        type="button"
-        disabled={!allClustered}
-        onClick={() => router.push("/life-purpose/naming")}
-        className={`rounded-8 px-16 py-8 text-button-cta ${allClustered ? "bg-olive text-white" : "bg-cancel text-cancel-text"}`}
-      >
-        Wrap up
-      </button>
+      {allClustered ? (
+        <button type="button" onClick={() => router.push("/life-purpose/naming")} className="rounded-8 bg-olive px-16 py-8 text-button-cta text-white">
+          Wrap up
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            disabled={currentWords.length === 0}
+            onClick={() => setCurrent(working.length)}
+            className="rounded-8 bg-primary-600 px-16 py-8 text-button-cta text-white disabled:opacity-50"
+          >
+            Next
+          </button>
+          <button type="button" disabled aria-disabled className="cursor-not-allowed rounded-8 bg-cancel px-16 py-8 text-button-cta text-cancel-text opacity-50">
+            Wrap up
+          </button>
+        </>
+      )}
     </div>
   );
 
