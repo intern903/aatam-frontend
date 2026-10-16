@@ -24,10 +24,12 @@ export default function BuildNextPage() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Starting (or cancelling) empties the draft; don't bounce back into the build on the way out.
+  const leaving = useRef(false);
   const rows = useRef(new Map<string, HTMLDivElement>());
 
   useEffect(() => {
-    if (hydrated && draft.length === 0) router.replace("/outcomes/new");
+    if (hydrated && draft.length === 0 && !leaving.current) router.replace("/outcomes/new");
   }, [hydrated, draft.length, router]);
   if (!hydrated || draft.length === 0) return null;
 
@@ -133,6 +135,7 @@ export default function BuildNextPage() {
             <button
               type="button"
               onClick={() => {
+                leaving.current = true;
                 startPeriod();
                 router.push("/outcomes/period");
               }}
@@ -148,6 +151,7 @@ export default function BuildNextPage() {
         <CancelGameSheet
           onKeep={() => setCancelling(false)}
           onCancel={() => {
+            leaving.current = true;
             cancelDraft();
             router.push("/outcomes/period");
           }}

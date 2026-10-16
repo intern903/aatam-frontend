@@ -91,6 +91,9 @@ export type AppState = {
   // when last period's numbers may show (never before, so they don't anchor the answer).
   wellbeing: { scores: Record<string, number | null>; submitted: boolean; pastScores: PastScores[] };
   lifeCodes: LifeCode[];
+  // Demo sets loaded on purpose from /_index (internal). Their data matches the old untouched
+  // samples that are cleared on load, so they are listed here to be kept.
+  demo?: string[];
   settings: {
     notifications: boolean;
     // Which life areas use an uploaded picture instead of the default. Only this choice is
@@ -133,7 +136,8 @@ function sampleCif(): AppState["cif"] {
     lifeAreas: data.lifeAreas,
     keyResults: data.keyResults,
     agreementSigned: true,
-    progress: data.cifProgress,
+    // Stamped with the moment it was loaded, so it is never mistaken for the old untouched sample.
+    progress: { ...data.cifProgress, submittedAt: new Date().toISOString() },
     columns: toColumns({ answers: data.cifAnswers, lifeAreas: data.lifeAreas, progress: data.cifProgress }),
   };
 }
@@ -199,12 +203,13 @@ function read(): AppState | null {
     }
     // Meera's sample CIF, still untouched (submitted at the sample's own moment), is cleared.
     if (saved.cif?.progress?.submittedAt === data.cifProgress.submittedAt) saved.cif = emptyCif();
+    const demo = new Set(saved.demo ?? []);
     // Life Purpose fields added later get empty defaults.
     if (saved.lifePurpose) {
       const lp = saved.lifePurpose as Partial<AppState["lifePurpose"]>;
       saved.lifePurpose = { ...lp, drafts: lp.drafts ?? [], makeItReal: lp.makeItReal ?? [], bodyFeel: lp.bodyFeel ?? "" } as AppState["lifePurpose"];
       // Meera's old sample Life Purpose, still untouched, is cleared so the client starts fresh.
-      if (lp.statement === data.lifePurposeStatement && lp.stories?.[0]?.id === "story-1") {
+      if (!demo.has("lifePurpose") && lp.statement === data.lifePurposeStatement && lp.stories?.[0]?.id === "story-1") {
         saved.lifePurpose = emptyLifePurpose();
       }
       // No stories yet: the coach's (for now, sample) stories and body word fill in.
@@ -214,7 +219,7 @@ function read(): AppState | null {
     }
     // Visions: the "added" list came later; Meera's sample visions, still untouched, are cleared.
     if (saved.visions) {
-      const untouched = JSON.stringify(saved.visions.byLifeArea) === JSON.stringify(sampleVisions());
+      const untouched = !demo.has("visions") && JSON.stringify(saved.visions.byLifeArea) === JSON.stringify(sampleVisions());
       const byLifeArea = untouched ? {} : saved.visions.byLifeArea ?? {};
       saved.visions = {
         byLifeArea,
@@ -228,13 +233,13 @@ function read(): AppState | null {
     for (const key of ["values", "qualities"] as const) {
       const slice = saved[key];
       if (!slice) continue;
-      const untouched = JSON.stringify(slice.selected) === JSON.stringify(key === "values" ? data.values : data.qualities);
+      const untouched = !demo.has("values") && JSON.stringify(slice.selected) === JSON.stringify(key === "values" ? data.values : data.qualities);
       saved[key] = untouched ? { selected: [], final: [], added: [] } : { ...slice, added: slice.added ?? [] };
     }
     // Outcomes: the period and the draft came later; Meera's sample period, still untouched, is cleared.
     if (saved.outcomes) {
       const o = saved.outcomes as Partial<AppState["outcomes"]>;
-      const untouched = !o.period && o.currentPeriod?.map((x) => x.id).join() === data.currentOutcomes.map((x) => x.id).join();
+      const untouched = !demo.has("engine") && !o.period && o.currentPeriod?.map((x) => x.id).join() === data.currentOutcomes.map((x) => x.id).join();
       saved.outcomes = untouched
         ? emptyOutcomes()
         : {
@@ -300,6 +305,14 @@ function update(change: (s: AppState) => AppState) {
   state = change(state);
   write(state);
   listeners.forEach((l) => l());
+}
+
+/** Marks (or unmarks) a demo set as loaded on purpose, so it survives a reload. */
+function markDemo(key: string, on: boolean) {
+  update((s) => {
+    const rest = (s.demo ?? []).filter((k) => k !== key);
+    return { ...s, demo: on ? [...rest, key] : rest };
+  });
 }
 
 function newId(prefix: string) {
@@ -505,10 +518,12 @@ export function loadSampleLifePurpose(status: "draft" | "final") {
       bodyFeel: data.purposeBodyFeel,
     },
   }));
+  markDemo("lifePurpose", true);
 }
 /** Internal demo only (/_index): back to an empty Life Purpose. */
 export function clearLifePurpose() {
   update((s) => ({ ...s, lifePurpose: emptyLifePurpose() }));
+  markDemo("lifePurpose", false);
 }
 /** "Draft Feels True": keeps the client's own words as the current draft and in the history. */
 export function saveDraft(text: string) {
@@ -541,9 +556,11 @@ function sampleVisions() {
 }
 export function loadSampleVisions() {
   update((s) => ({ ...s, visions: { ...s.visions, byLifeArea: sampleVisions(), areasFinal: true } }));
+  markDemo("visions", true);
 }
 export function clearVisions() {
   update((s) => ({ ...s, visions: { byLifeArea: {}, added: [], removed: [], areasFinal: false } }));
+  markDemo("visions", false);
 }
 /** Takes an area off the list while the areas are still being chosen. */
 export function removeVisionArea(lifeArea: LifeAreaId) {
@@ -628,6 +645,7 @@ export function loadSampleValues() {
     values: { selected: data.values, final: data.finalValueIds, added: [] },
     qualities: { selected: data.qualities, final: data.finalQualityIds, added: [] },
   }));
+  markDemo("values", true);
 }
 export function clearValues() {
   update((s) => ({
@@ -636,6 +654,7 @@ export function clearValues() {
     qualities: { selected: [], final: [], added: [] },
     discovery: null,
   }));
+  markDemo("values", false);
 }
 export function setSelectedValues(selected: Trait[]) {
   update((s) => ({ ...s, values: { ...s.values, selected } }));
@@ -789,9 +808,11 @@ export function loadSampleEngine() {
     wellbeing: { scores: {}, submitted: false, pastScores: data.pastWellbeingScores },
     lifeCodes: data.lifeCodes,
   }));
+  markDemo("engine", true);
 }
 export function clearEngine() {
   update((s) => ({ ...s, outcomes: emptyOutcomes(), wellbeing: { scores: {}, submitted: false, pastScores: [] }, lifeCodes: [] }));
+  markDemo("engine", false);
 }
 
 // Demo

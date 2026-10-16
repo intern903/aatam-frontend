@@ -100,8 +100,10 @@ export function GreenButton({ children, onClick, disabled }: { children: React.R
 }
 
 /**
- * An area with a vision (Vision - Flow Screen 11 / Final Screen): the wide LifeAreaCard. Tap the
- * photo to turn it over and read the vision; the arrow opens the area to edit it.
+ * An area with a vision (Vision - Flow Screen 11 / Final Screen): the wide LifeAreaCard. Tapping the
+ * photo or its arrow turns it over to the vision: the statement and, when the client went
+ * deeper, the line for each power word. The pencil on the back opens the area to edit it.
+ * The back is drawn in place of the front (with a quick turn), so it shows in every browser.
  */
 export function VisionCard({ vision, onArrow }: { vision: Vision; onArrow: () => void }) {
   const [flipped, setFlipped] = useState(false);
@@ -109,38 +111,40 @@ export function VisionCard({ vision, onArrow }: { vision: Vision; onArrow: () =>
   const name = areaName(id);
   return (
     <div className="h-area-card w-full [perspective:1000px]">
-      <div
-        className="relative size-full transition-transform duration-500 [transform-style:preserve-3d]"
-        style={{ transform: flipped ? "rotateY(180deg)" : undefined }}
-      >
-        <div className="absolute inset-0 [backface-visibility:hidden]">
-          <LifeAreaCard id={id} name={name} variant="vision" onOpen={() => setFlipped(true)} onArrow={onArrow} />
-        </div>
-        <VisionBack id={id} vision={vision} onClose={() => setFlipped(false)} />
+      <div key={flipped ? "back" : "front"} className="size-full animate-card-turn">
+        {flipped ? (
+          <VisionBack id={id} vision={vision} onClose={() => setFlipped(false)} onEdit={onArrow} />
+        ) : (
+          <LifeAreaCard id={id} name={name} variant="vision" onOpen={() => setFlipped(true)} onArrow={() => setFlipped(true)} />
+        )}
       </div>
     </div>
   );
 }
 
-function VisionBack({ id, vision, onClose }: { id: LifeAreaId; vision: Vision; onClose: () => void }) {
+function VisionBack({ id, vision, onClose, onEdit }: { id: LifeAreaId; vision: Vision; onClose: () => void; onEdit: () => void }) {
+  const deeper = Object.entries(vision.byPowerWord).filter(([, line]) => line.trim());
   return (
-    <div className="absolute inset-0 flex flex-col gap-12 overflow-y-auto rounded-24 bg-white p-16 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+    <div className="flex size-full flex-col gap-12 overflow-y-auto rounded-24 bg-white p-16">
       <div className="flex items-center justify-between">
         <span className={`rounded-pill px-8 text-caption text-white ${areaColour(id).solid}`}>{areaName(id)}</span>
-        <button type="button" aria-label="Close" onClick={onClose} className="flex size-icon items-center justify-center">
-          <Image src="/icons/x.svg" alt="" width={20} height={20} />
-        </button>
+        <span className="flex items-center gap-4">
+          <button type="button" aria-label={`Edit my ${areaName(id)} vision`} onClick={onEdit} className="flex size-icon items-center justify-center">
+            <Image src="/icons/edit-3.svg" alt="" width={16} height={16} />
+          </button>
+          <button type="button" aria-label="Turn over" onClick={onClose} className="flex size-icon items-center justify-center">
+            <Image src="/icons/x.svg" alt="" width={20} height={20} />
+          </button>
+        </span>
       </div>
       <p className="text-body text-black">{vision.statement}</p>
-      {/* "Go Deeper": the line written for each power word, under the statement. */}
-      {Object.entries(vision.byPowerWord)
-        .filter(([, line]) => line.trim())
-        .map(([word, line]) => (
-          <div key={word} className="flex flex-col gap-4 border-t-hairline border-background-600 pt-8">
-            <span className="text-caption text-ink-60">{word}</span>
-            <p className="text-body-small text-black">{line}</p>
-          </div>
-        ))}
+      {/* Go Deeper: the line written for each power word, under the statement. */}
+      {deeper.map(([word, line]) => (
+        <div key={word} className="flex flex-col gap-4 border-t-hairline border-background-600 pt-8">
+          <span className="text-caption text-ink-60">{word}</span>
+          <p className="text-body-small text-black">{line}</p>
+        </div>
+      ))}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import OutcomeCard from "@/components/engine/OutcomeCard";
 import {
   AreaChips,
@@ -40,6 +40,7 @@ export default function NewOutcomesPage() {
   const [form, setForm] = useState<Form>(BLANK);
   const [picking, setPicking] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const leaving = useRef(false); // cancelling clears the end date; don't bounce to the dates step
   const draft = outcomes.draft.outcomes;
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
   const valid = !!form.area && !!form.type && form.text.trim().length > 0 && form.goal !== undefined;
@@ -47,7 +48,7 @@ export default function NewOutcomesPage() {
 
   // The period's end comes first.
   useEffect(() => {
-    if (hydrated && !outcomes.draft.end) router.replace("/outcomes/dates");
+    if (hydrated && !outcomes.draft.end && !leaving.current) router.replace("/outcomes/dates");
   }, [hydrated, outcomes.draft.end, router]);
   if (!hydrated || !outcomes.draft.end) return null;
 
@@ -156,6 +157,7 @@ export default function NewOutcomesPage() {
         <CancelGameSheet
           onKeep={() => setCancelling(false)}
           onCancel={() => {
+            leaving.current = true;
             cancelDraft();
             router.push("/outcomes/period");
           }}

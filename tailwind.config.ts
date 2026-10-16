@@ -189,10 +189,16 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(12px) scale(0.96)" },
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        // A card turning over to its other side (vision cards)
+        "card-turn": {
+          from: { transform: "rotateY(90deg)" },
+          to: { transform: "rotateY(0deg)" },
+        },
       },
       animation: {
         "slide-in": "slide-in 300ms ease-in-out",
         rise: "rise 500ms ease-out",
+        "card-turn": "card-turn 250ms ease-out",
       },
       size: {
         "icon-button": "40px",
